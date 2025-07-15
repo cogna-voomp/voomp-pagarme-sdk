@@ -46,7 +46,7 @@ class CreateSubscriptionRequestBuilder
      * Initializes a new Create Subscription Request Builder object.
      *
      * @param CreateCustomerRequest $customer
-     * @param CreateCardRequest $card
+     * @param CreateCardRequest|null $card Card data. Required only if $paymentMethod is 'credit_card'.
      * @param string $code
      * @param string $paymentMethod
      * @param string $billingType
@@ -61,10 +61,12 @@ class CreateSubscriptionRequestBuilder
      * @param CreateDiscountRequest[] $discounts
      * @param array<string,string> $metadata
      * @param CreateIncrementRequest[] $increments
+     *
+     * @throws \InvalidArgumentException if paymentMethod is 'credit_card' and card is null
      */
     public static function init(
         CreateCustomerRequest $customer,
-        CreateCardRequest $card,
+        ?CreateCardRequest $card,
         string $code,
         string $paymentMethod,
         string $billingType,
@@ -299,10 +301,17 @@ class CreateSubscriptionRequestBuilder
     }
 
     /**
-     * Initializes a new Create Subscription Request object.
+     * Finaliza a construção do objeto CreateSubscriptionRequest.
+     *
+     * @throws \InvalidArgumentException se paymentMethod for 'credit_card' e card não for informado
      */
     public function build(): CreateSubscriptionRequest
     {
+        $paymentMethod = $this->instance->getPaymentMethod();
+        $card = $this->instance->getCard();
+        if ($paymentMethod === 'credit_card' && $card === null) {
+            throw new \InvalidArgumentException('O parâmetro card é obrigatório quando paymentMethod for "credit_card".');
+        }
         return CoreHelper::clone($this->instance);
     }
 }
