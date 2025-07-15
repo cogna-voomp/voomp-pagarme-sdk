@@ -12,7 +12,7 @@ Request for creating a subcription
 | Name | Type | Tags | Description | Getter | Setter |
 |  --- | --- | --- | --- | --- | --- |
 | `customer` | [`CreateCustomerRequest`](../../doc/models/create-customer-request.md) | Required | Customer | getCustomer(): CreateCustomerRequest | setCustomer(CreateCustomerRequest customer): void |
-| `card` | [`CreateCardRequest`](../../doc/models/create-card-request.md) | Required | Card | getCard(): CreateCardRequest | setCard(CreateCardRequest card): void |
+| `card` | [`CreateCardRequest`](../../doc/models/create-card-request.md) | Condicional<sup>1</sup> | Card data. Required only if `paymentMethod` is `'credit_card'`. | getCard(): CreateCardRequest\|null | setCard(CreateCardRequest\|null card): void |
 | `code` | `string` | Required | Subscription code | getCode(): string | setCode(string code): void |
 | `paymentMethod` | `string` | Required | Payment method | getPaymentMethod(): string | setPaymentMethod(string paymentMethod): void |
 | `billingType` | `string` | Required | Billing type | getBillingType(): string | setBillingType(string billingType): void |
@@ -313,4 +313,6 @@ Request for creating a subcription
   "billing_day": 152
 }
 ```
+
+<sup>1</sup> The `card` field is required only when `paymentMethod` is set to `'credit_card'`. For other payment methods, this field should be omitted or set to null.
 

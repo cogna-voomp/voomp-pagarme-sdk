@@ -25,7 +25,7 @@ class CreateSubscriptionRequest implements \JsonSerializable
     private $customer;
 
     /**
-     * @var CreateCardRequest
+     * @var CreateCardRequest|null Card data. Required only if paymentMethod is 'credit_card'.
      */
     private $card;
 
@@ -191,7 +191,7 @@ class CreateSubscriptionRequest implements \JsonSerializable
 
     /**
      * @param CreateCustomerRequest $customer
-     * @param CreateCardRequest $card
+     * @param CreateCardRequest|null $card Card data. Required only if paymentMethod is 'credit_card'.
      * @param string $code
      * @param string $paymentMethod
      * @param string $billingType
@@ -206,10 +206,12 @@ class CreateSubscriptionRequest implements \JsonSerializable
      * @param CreateDiscountRequest[] $discounts
      * @param array<string,string> $metadata
      * @param CreateIncrementRequest[] $increments
+     *
+     * @throws \InvalidArgumentException if paymentMethod is 'credit_card' and card is null
      */
     public function __construct(
         CreateCustomerRequest $customer,
-        CreateCardRequest $card,
+        ?CreateCardRequest $card,
         string $code,
         string $paymentMethod,
         string $billingType,
@@ -225,6 +227,9 @@ class CreateSubscriptionRequest implements \JsonSerializable
         array $metadata,
         array $increments
     ) {
+        if ($paymentMethod === 'credit_card' && $card === null) {
+            throw new \InvalidArgumentException('O parâmetro card é obrigatório quando paymentMethod for "credit_card".');
+        }
         $this->customer = $customer;
         $this->card = $card;
         $this->code = $code;
@@ -266,21 +271,20 @@ class CreateSubscriptionRequest implements \JsonSerializable
 
     /**
      * Returns Card.
-     * Card
+     * Card data. Required only if paymentMethod is 'credit_card'.
      */
-    public function getCard(): CreateCardRequest
+    public function getCard(): ?CreateCardRequest
     {
         return $this->card;
     }
 
     /**
      * Sets Card.
-     * Card
+     * Card data. Required only if paymentMethod is 'credit_card'.
      *
-     * @required
      * @maps card
      */
-    public function setCard(CreateCardRequest $card): void
+    public function setCard(?CreateCardRequest $card): void
     {
         $this->card = $card;
     }
