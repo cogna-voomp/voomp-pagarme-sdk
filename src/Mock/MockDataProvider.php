@@ -29,6 +29,7 @@ use PagarmeApiSDKLib\Models\GetPayableResponse;
 use PagarmeApiSDKLib\Models\GetShippingResponse;
 use PagarmeApiSDKLib\Models\GetSetupResponse;
 use PagarmeApiSDKLib\Models\GetSubscriptionBoletoResponse;
+use PagarmeApiSDKLib\Models\GetGatewayResponseResponse;
 use PagarmeApiSDKLib\Models\ListSubscriptionsResponse;
 use PagarmeApiSDKLib\Models\ListChargesResponse;
 use PagarmeApiSDKLib\Models\ListPlansResponse;
@@ -266,6 +267,7 @@ class MockDataProvider
         $gatewayId = MockIdGenerator::gatewayId();
 
         $tx = new GetCreditCardTransactionResponse();
+        $tx->setId(MockIdGenerator::transactionId());
         $tx->setGatewayId($gatewayId);
         $tx->setAmount($amount);
         $tx->setStatus('captured');
@@ -283,6 +285,13 @@ class MockDataProvider
         $tx->setOperationType('auth_and_capture');
         $tx->setInstallments($installments);
         $tx->setCard($card ?? self::card());
+        $tx->setFundingSource('credit');
+
+        $gwResponse = new GetGatewayResponseResponse();
+        $gwResponse->setCode('200');
+        $gwResponse->setErrors([]);
+        $tx->setGatewayResponse($gwResponse);
+
         return $tx;
     }
 
@@ -336,6 +345,7 @@ class MockDataProvider
     ): GetOrderItemResponse {
         $item = new GetOrderItemResponse();
         $item->setId(MockIdGenerator::orderItemId());
+        $item->setType('product');
         $item->setDescription($description ?? 'Mock Product');
         $item->setAmount($amount);
         $item->setQuantity($quantity);
@@ -439,9 +449,25 @@ class MockDataProvider
         $inv->setMetadata($metadata ?? []);
         $inv->setSubscriptionId($subscriptionId);
 
-        if ($cycle) {
-            $inv->setCycle($cycle);
+        if ($subscriptionId) {
+            $mockSub = new GetSubscriptionResponse();
+            $mockSub->setId($subscriptionId);
+            $mockSub->setStatus('active');
+            $mockSub->setPaymentMethod($paymentMethod ?? 'credit_card');
+            $mockSub->setInterval('month');
+            $mockSub->setIntervalCount(1);
+            $mockSub->setBillingType('prepaid');
+            $mockSub->setCurrency('BRL');
+            $mockSub->setInstallments($installments);
+            $mockSub->setCreatedAt($now);
+            $mockSub->setUpdatedAt($now);
+            $mockSub->setNextBillingAt((clone $now)->modify('+1 month'));
+            $mockSub->setMetadata($metadata ?? []);
+            $inv->setSubscription($mockSub);
         }
+
+        $mockCycle = $cycle ?? self::period(1, 'billed');
+        $inv->setCycle($mockCycle);
 
         if ($charge) {
             $inv->setCharge($charge);
@@ -502,13 +528,11 @@ class MockDataProvider
         $cycle = self::period(1, 'billed');
         $sub->setCurrentCycle($cycle);
 
+        $plan = self::plan($statementDescriptor, $interval, $intervalCount);
         if ($planId) {
-            $plan = new GetPlanResponse();
             $plan->setId($planId);
-            $sub->setPlan($plan);
-        } else {
-            $sub->setPlan(self::plan($statementDescriptor));
         }
+        $sub->setPlan($plan);
 
         $sub->setItems($items ?? [
             self::subscriptionItem($statementDescriptor, $resolvedAmount, 1, $cycles)

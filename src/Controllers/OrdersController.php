@@ -199,12 +199,7 @@ class OrdersController extends BaseController
             $code
         );
 
-        MockWebhookDispatcher::dispatchOrderPaid([
-            'id' => $order->getId(),
-            'code' => $order->getCode(),
-            'amount' => $order->getAmount(),
-            'status' => $order->getStatus(),
-        ]);
+        MockWebhookDispatcher::dispatchOrderPaid($order);
 
         return $order;
     }

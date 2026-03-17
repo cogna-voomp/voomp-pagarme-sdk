@@ -140,13 +140,7 @@ class InvoicesController extends BaseController
     ): GetInvoiceResponse {
         $invoice = MockDataProvider::invoice(10000, 'paid', null, $subscriptionId);
 
-        MockWebhookDispatcher::dispatchInvoiceCreated([
-            'id' => $invoice->getId(),
-            'code' => $invoice->getCode(),
-            'amount' => $invoice->getAmount(),
-            'status' => $invoice->getStatus(),
-            'subscription_id' => $subscriptionId,
-        ]);
+        MockWebhookDispatcher::dispatchInvoiceCreated($invoice);
 
         return $invoice;
     }

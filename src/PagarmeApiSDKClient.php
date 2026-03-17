@@ -307,6 +307,14 @@ class PagarmeApiSDKClient implements ConfigurationInterface
     }
 
     /**
+     * Alias for getChargesController() - compatibility with pagarme/pagarme-php-sdk
+     */
+    public function getCharges(): ChargesController
+    {
+        return $this->getChargesController();
+    }
+
+    /**
      * Returns Recipients Controller
      */
     public function getRecipientsController(): RecipientsController

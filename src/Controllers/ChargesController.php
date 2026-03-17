@@ -175,13 +175,7 @@ class ChargesController extends BaseController
             $metadata
         );
 
-        MockWebhookDispatcher::dispatchChargePaid([
-            'id' => $charge->getId(),
-            'code' => $charge->getCode(),
-            'amount' => $charge->getAmount(),
-            'status' => $charge->getStatus(),
-            'payment_method' => $charge->getPaymentMethod(),
-        ]);
+        MockWebhookDispatcher::dispatchChargePaid($charge);
 
         return $charge;
     }

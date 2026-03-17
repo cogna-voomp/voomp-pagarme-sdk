@@ -291,11 +291,7 @@ class SubscriptionsController extends BaseController
         $sub->setStatus('canceled');
         $sub->setCanceledAt(new \DateTime());
 
-        MockWebhookDispatcher::dispatchSubscriptionCanceled([
-            'id' => $subscriptionId,
-            'status' => 'canceled',
-            'canceled_at' => (new \DateTime())->format('Y-m-d\TH:i:s\Z'),
-        ]);
+        MockWebhookDispatcher::dispatchSubscriptionCanceled($sub);
 
         return $sub;
     }
@@ -340,13 +336,7 @@ class SubscriptionsController extends BaseController
             $body->getBillingType()
         );
 
-        MockWebhookDispatcher::dispatchSubscriptionCreated([
-            'id' => $sub->getId(),
-            'code' => $sub->getCode(),
-            'status' => 'active',
-            'payment_method' => $body->getPaymentMethod(),
-            'created_at' => (new \DateTime())->format('Y-m-d\TH:i:s\Z'),
-        ]);
+        MockWebhookDispatcher::dispatchSubscriptionCreated($sub);
 
         return $sub;
     }
