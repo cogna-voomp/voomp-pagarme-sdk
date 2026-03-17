@@ -10,11 +10,6 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\BodyParam;
-use Core\Request\Parameters\HeaderParam;
-use Core\Request\Parameters\QueryParam;
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
 use PagarmeApiSDKLib\Exceptions\ApiException;
 use PagarmeApiSDKLib\Models\CreateCancelSubscriptionRequest;
 use PagarmeApiSDKLib\Models\CreateDiscountRequest;
@@ -35,6 +30,7 @@ use PagarmeApiSDKLib\Models\ListIncrementsResponse;
 use PagarmeApiSDKLib\Models\ListSubscriptionItemsResponse;
 use PagarmeApiSDKLib\Models\ListSubscriptionsResponse;
 use PagarmeApiSDKLib\Models\ListUsagesResponse;
+use PagarmeApiSDKLib\Models\PagingResponse;
 use PagarmeApiSDKLib\Models\UpdateCurrentCycleEndDateRequest;
 use PagarmeApiSDKLib\Models\UpdateCurrentCycleStatusRequest;
 use PagarmeApiSDKLib\Models\UpdateMetadataRequest;
@@ -47,7 +43,9 @@ use PagarmeApiSDKLib\Models\UpdateSubscriptionMinimumPriceRequest;
 use PagarmeApiSDKLib\Models\UpdateSubscriptionPaymentMethodRequest;
 use PagarmeApiSDKLib\Models\UpdateSubscriptionSplitRequest;
 use PagarmeApiSDKLib\Models\UpdateSubscriptionStartAtRequest;
-use PagarmeApiSDKLib\Utils\DateTimeHelper;
+use PagarmeApiSDKLib\Mock\MockDataProvider;
+use PagarmeApiSDKLib\Mock\MockWebhookDispatcher;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
 
 class SubscriptionsController extends BaseController
 {
@@ -67,17 +65,10 @@ class SubscriptionsController extends BaseController
         UpdateSubscriptionCardRequest $request,
         ?string $idempotencyKey = null
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/subscriptions/{subscription_id}/card')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription();
+        $sub->setId($subscriptionId);
+        $sub->setStatus('active');
+        return $sub;
     }
 
     /**
@@ -96,17 +87,15 @@ class SubscriptionsController extends BaseController
         CreateDiscountRequest $request,
         ?string $idempotencyKey = null
     ): GetDiscountResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/subscriptions/{subscription_id}/discounts')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetDiscountResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $discount = new GetDiscountResponse();
+        $discount->setId(MockIdGenerator::generate('disc'));
+        $discount->setStatus('active');
+        $discount->setValue(10.0);
+        $discount->setDiscountType('percentage');
+        $discount->setCreatedAt(new \DateTime());
+        $discount->setCycles(0);
+        $discount->setDescription('Mock discount');
+        return $discount;
     }
 
     /**
@@ -126,17 +115,9 @@ class SubscriptionsController extends BaseController
         UpdateSubscriptionBillingDateRequest $request,
         ?string $idempotencyKey = null
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/subscriptions/{subscription_id}/billing-date')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription();
+        $sub->setId($subscriptionId);
+        return $sub;
     }
 
     /**
@@ -156,17 +137,9 @@ class SubscriptionsController extends BaseController
         UpdateSubscriptionStartAtRequest $request,
         ?string $idempotencyKey = null
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/subscriptions/{subscription_id}/start-at')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription();
+        $sub->setId($subscriptionId);
+        return $sub;
     }
 
     /**
@@ -180,13 +153,9 @@ class SubscriptionsController extends BaseController
      */
     public function getSubscription(string $subscriptionId): GetSubscriptionResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/subscriptions/{subscription_id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('subscription_id', $subscriptionId));
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription();
+        $sub->setId($subscriptionId);
+        return $sub;
     }
 
     /**
@@ -215,25 +184,21 @@ class SubscriptionsController extends BaseController
         ?\DateTime $usedSince = null,
         ?\DateTime $usedUntil = null
     ): ListUsagesResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::GET,
-            '/subscriptions/{subscription_id}/items/{item_id}/usages'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('item_id', $itemId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('code', $code),
-                QueryParam::init('group', $group),
-                QueryParam::init('used_since', $usedSince)->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('used_until', $usedUntil)->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime'])
-            );
+        $usage = new GetUsageResponse();
+        $usage->setId(MockIdGenerator::generate('usage'));
+        $usage->setQuantity(1);
+        $usage->setDescription('Mock usage');
+        $usage->setUsedAt(new \DateTime());
+        $usage->setCreatedAt(new \DateTime());
+        $usage->setStatus('active');
+        $usage->setCode($code ?? 'mock_usage_code');
+        $usage->setGroup($group ?? 'default');
+        $usage->setAmount(100);
 
-        $_resHandler = $this->responseHandler()->type(ListUsagesResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $list = new ListUsagesResponse();
+        $list->setData([$usage]);
+        $list->setPaging(MockDataProvider::paging(1));
+        return $list;
     }
 
     /**
@@ -251,20 +216,9 @@ class SubscriptionsController extends BaseController
         UpdateCurrentCycleEndDateRequest $request,
         ?string $idempotencyKey = null
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::PATCH,
-            '/subscriptions/{subscription_id}/periods/latest/end-at'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription();
+        $sub->setId($subscriptionId);
+        return $sub;
     }
 
     /**
@@ -283,20 +237,15 @@ class SubscriptionsController extends BaseController
         string $discountId,
         ?string $idempotencyKey = null
     ): GetDiscountResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::DELETE,
-            '/subscriptions/{subscription_id}/discounts/{discount_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('discount_id', $discountId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetDiscountResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $discount = new GetDiscountResponse();
+        $discount->setId($discountId);
+        $discount->setStatus('deleted');
+        $discount->setValue(10.0);
+        $discount->setDiscountType('percentage');
+        $discount->setCreatedAt(new \DateTime());
+        $discount->setDeletedAt(new \DateTime());
+        $discount->setDescription('Mock discount');
+        return $discount;
     }
 
     /**
@@ -316,20 +265,9 @@ class SubscriptionsController extends BaseController
         UpdateSubscriptionPaymentMethodRequest $request,
         ?string $idempotencyKey = null
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::PATCH,
-            '/subscriptions/{subscription_id}/payment-method'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription();
+        $sub->setId($subscriptionId);
+        return $sub;
     }
 
     /**
@@ -348,17 +286,18 @@ class SubscriptionsController extends BaseController
         ?CreateCancelSubscriptionRequest $request = null,
         ?string $idempotencyKey = null
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::DELETE, '/subscriptions/{subscription_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
+        $sub = MockDataProvider::subscription();
+        $sub->setId($subscriptionId);
+        $sub->setStatus('canceled');
+        $sub->setCanceledAt(new \DateTime());
 
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
+        MockWebhookDispatcher::dispatchSubscriptionCanceled([
+            'id' => $subscriptionId,
+            'status' => 'canceled',
+            'canceled_at' => (new \DateTime())->format('Y-m-d\TH:i:s\Z'),
+        ]);
 
-        return $this->execute($_reqBuilder, $_resHandler);
+        return $sub;
     }
 
     /**
@@ -375,13 +314,41 @@ class SubscriptionsController extends BaseController
         CreateSubscriptionRequest $body,
         ?string $idempotencyKey = null
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/subscriptions')
-            ->auth('httpBasic')
-            ->parameters(BodyParam::init($body), HeaderParam::init('idempotency-key', $idempotencyKey));
+        // Extract customer info from body
+        $customerReq = $body->getCustomer();
+        $customerName = $customerReq ? $customerReq->getName() : null;
+        $customerEmail = $customerReq ? $customerReq->getEmail() : null;
+        $customerDocument = $customerReq ? $customerReq->getDocument() : null;
 
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
+        $customer = MockDataProvider::customer($customerName, $customerEmail, $customerDocument);
+        $card = MockDataProvider::card();
 
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription(
+            $body->getPlanId(),
+            $body->getPaymentMethod(),
+            null,
+            $customer,
+            $card,
+            null,
+            $body->getMetadata(),
+            $body->getCode(),
+            $body->getStatementDescriptor(),
+            $body->getInstallments() ?? 1,
+            $body->getCycles(),
+            $body->getInterval(),
+            $body->getIntervalCount(),
+            $body->getBillingType()
+        );
+
+        MockWebhookDispatcher::dispatchSubscriptionCreated([
+            'id' => $sub->getId(),
+            'code' => $sub->getCode(),
+            'status' => 'active',
+            'payment_method' => $body->getPaymentMethod(),
+            'created_at' => (new \DateTime())->format('Y-m-d\TH:i:s\Z'),
+        ]);
+
+        return $sub;
     }
 
     /**
@@ -399,28 +366,17 @@ class SubscriptionsController extends BaseController
         UpdateSubscriptionAffiliationIdRequest $request,
         ?string $idempotencyKey = null
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::PATCH,
-            '/subscriptions/{subscription_id}/gateway-affiliation-id'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription();
+        $sub->setId($subscriptionId);
+        return $sub;
     }
 
     /**
-     * Atualização do valor mínimo da assinatura
+     * Atualização do valor minimo da assinatura
      *
      * @param string $subscriptionId Subscription Id
      * @param UpdateSubscriptionMinimumPriceRequest $request Request da requisição com o valor
-     *        mínimo que será configurado
+     *        minimo que será configurado
      * @param string|null $idempotencyKey
      *
      * @return GetSubscriptionResponse Response from the API call
@@ -432,20 +388,9 @@ class SubscriptionsController extends BaseController
         UpdateSubscriptionMinimumPriceRequest $request,
         ?string $idempotencyKey = null
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::PATCH,
-            '/subscriptions/{subscription_id}/minimum_price'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription();
+        $sub->setId($subscriptionId);
+        return $sub;
     }
 
     /**
@@ -458,19 +403,9 @@ class SubscriptionsController extends BaseController
      */
     public function getSubscriptionCycleById(string $subscriptionId, string $cycleId): GetPeriodResponse
     {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::GET,
-            '/subscriptions/{subscription_id}/cycles/{cycleId}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('cycleId', $cycleId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetPeriodResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $period = MockDataProvider::period(1);
+        $period->setId($cycleId);
+        return $period;
     }
 
     /**
@@ -483,19 +418,11 @@ class SubscriptionsController extends BaseController
      */
     public function getUsageReport(string $subscriptionId, string $periodId): GetUsageReportResponse
     {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::GET,
-            '/subscriptions/{subscription_id}/periods/{period_id}/usages/report'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('period_id', $periodId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetUsageReportResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $report = new GetUsageReportResponse();
+        $report->setUrl('https://mock.pagarme.com/usage-report/' . $subscriptionId . '/' . $periodId);
+        $report->setUsageReportUrl('https://mock.pagarme.com/usage-report/' . $subscriptionId . '/' . $periodId . '/detail');
+        $report->setGroupedReportUrl('https://mock.pagarme.com/usage-report/' . $subscriptionId . '/' . $periodId . '/grouped');
+        return $report;
     }
 
     /**
@@ -508,16 +435,7 @@ class SubscriptionsController extends BaseController
      */
     public function renewSubscription(string $subscriptionId, ?string $idempotencyKey = null): GetPeriodResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/subscriptions/{subscription_id}/cycles')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetPeriodResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::period(2);
     }
 
     /**
@@ -538,21 +456,17 @@ class SubscriptionsController extends BaseController
         string $usageId,
         ?string $idempotencyKey = null
     ): GetUsageResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::DELETE,
-            '/subscriptions/{subscription_id}/items/{item_id}/usages/{usage_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('item_id', $itemId),
-                TemplateParam::init('usage_id', $usageId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetUsageResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $usage = new GetUsageResponse();
+        $usage->setId($usageId);
+        $usage->setQuantity(1);
+        $usage->setDescription('Mock usage');
+        $usage->setUsedAt(new \DateTime());
+        $usage->setCreatedAt(new \DateTime());
+        $usage->setStatus('deleted');
+        $usage->setDeletedAt(new \DateTime());
+        $usage->setCode('mock_usage_code');
+        $usage->setAmount(100);
+        return $usage;
     }
 
     /**
@@ -571,20 +485,16 @@ class SubscriptionsController extends BaseController
         string $itemId,
         ?string $idempotencyKey = null
     ): GetUsageResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::POST,
-            '/subscriptions/{subscription_id}/items/{item_id}/usages'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('item_id', $itemId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetUsageResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $usage = new GetUsageResponse();
+        $usage->setId(MockIdGenerator::generate('usage'));
+        $usage->setQuantity(1);
+        $usage->setDescription('Mock usage');
+        $usage->setUsedAt(new \DateTime());
+        $usage->setCreatedAt(new \DateTime());
+        $usage->setStatus('active');
+        $usage->setCode('mock_usage_code');
+        $usage->setAmount(100);
+        return $usage;
     }
 
     /**
@@ -602,15 +512,8 @@ class SubscriptionsController extends BaseController
         UpdateCurrentCycleStatusRequest $request,
         ?string $idempotencyKey = null
     ): void {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/subscriptions/{subscription_id}/cycle-status')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $this->execute($_reqBuilder);
+        // Mock: no-op, just return
+        return;
     }
 
     /**
@@ -625,19 +528,9 @@ class SubscriptionsController extends BaseController
      */
     public function getSubscriptionItem(string $subscriptionId, string $itemId): GetSubscriptionItemResponse
     {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::GET,
-            '/subscriptions/{subscription_id}/items/{item_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('item_id', $itemId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $item = MockDataProvider::subscriptionItem();
+        $item->setId($itemId);
+        return $item;
     }
 
     /**
@@ -650,19 +543,14 @@ class SubscriptionsController extends BaseController
      */
     public function getIncrementById(string $subscriptionId, string $incrementId): GetIncrementResponse
     {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::GET,
-            '/subscriptions/{subscription_id}/increments/{increment_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('increment_id', $incrementId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetIncrementResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $increment = new GetIncrementResponse();
+        $increment->setId($incrementId);
+        $increment->setValue(10.0);
+        $increment->setIncrementType('percentage');
+        $increment->setStatus('active');
+        $increment->setCreatedAt(new \DateTime());
+        $increment->setDescription('Mock increment');
+        return $increment;
     }
 
     /**
@@ -681,20 +569,15 @@ class SubscriptionsController extends BaseController
         string $incrementId,
         ?string $idempotencyKey = null
     ): GetIncrementResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::DELETE,
-            '/subscriptions/{subscription_id}/increments/{increment_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('increment_id', $incrementId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetIncrementResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $increment = new GetIncrementResponse();
+        $increment->setId($incrementId);
+        $increment->setValue(10.0);
+        $increment->setIncrementType('percentage');
+        $increment->setStatus('deleted');
+        $increment->setCreatedAt(new \DateTime());
+        $increment->setDeletedAt(new \DateTime());
+        $increment->setDescription('Mock increment');
+        return $increment;
     }
 
     /**
@@ -708,17 +591,18 @@ class SubscriptionsController extends BaseController
      */
     public function getDiscounts(string $subscriptionId, int $page, int $size): ListDiscountsResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/subscriptions/{subscription_id}/discounts/')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size)
-            );
+        $discount = new GetDiscountResponse();
+        $discount->setId(MockIdGenerator::generate('disc'));
+        $discount->setStatus('active');
+        $discount->setValue(10.0);
+        $discount->setDiscountType('percentage');
+        $discount->setCreatedAt(new \DateTime());
+        $discount->setDescription('Mock discount');
 
-        $_resHandler = $this->responseHandler()->type(ListDiscountsResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $list = new ListDiscountsResponse();
+        $list->setData([$discount]);
+        $list->setPaging(MockDataProvider::paging(1));
+        return $list;
     }
 
     /**
@@ -737,20 +621,9 @@ class SubscriptionsController extends BaseController
         UpdateSubscriptionDueDaysRequest $request,
         ?string $idempotencyKey = null
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::PATCH,
-            '/subscriptions/{subscription_id}/boleto-due-days'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription();
+        $sub->setId($subscriptionId);
+        return $sub;
     }
 
     /**
@@ -769,17 +642,7 @@ class SubscriptionsController extends BaseController
         CreateSubscriptionItemRequest $request,
         ?string $idempotencyKey = null
     ): GetSubscriptionItemResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/subscriptions/{subscription_id}/items')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::subscriptionItem();
     }
 
     /**
@@ -794,13 +657,9 @@ class SubscriptionsController extends BaseController
         string $id,
         UpdateSubscriptionSplitRequest $request
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/subscriptions/{id}/split')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('id', $id), BodyParam::init($request));
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription();
+        $sub->setId($id);
+        return $sub;
     }
 
     /**
@@ -831,23 +690,9 @@ class SubscriptionsController extends BaseController
         ?string $createdSince = null,
         ?string $createdUntil = null
     ): ListSubscriptionItemsResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/subscriptions/{subscription_id}/items')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('name', $name),
-                QueryParam::init('code', $code),
-                QueryParam::init('status', $status),
-                QueryParam::init('description', $description),
-                QueryParam::init('created_since', $createdSince),
-                QueryParam::init('created_until', $createdUntil)
-            );
-
-        $_resHandler = $this->responseHandler()->type(ListSubscriptionItemsResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::listSubscriptionItems([
+            MockDataProvider::subscriptionItem($name),
+        ], 1);
     }
 
     /**
@@ -885,30 +730,11 @@ class SubscriptionsController extends BaseController
         ?\DateTime $createdSince = null,
         ?\DateTime $createdUntil = null
     ): ListSubscriptionsResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/subscriptions')
-            ->auth('httpBasic')
-            ->parameters(
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('code', $code),
-                QueryParam::init('billing_type', $billingType),
-                QueryParam::init('customer_id', $customerId),
-                QueryParam::init('plan_id', $planId),
-                QueryParam::init('card_id', $cardId),
-                QueryParam::init('status', $status),
-                QueryParam::init('next_billing_since', $nextBillingSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('next_billing_until', $nextBillingUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_since', $createdSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_until', $createdUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime'])
-            );
+        $sub1 = MockDataProvider::subscription();
+        $sub2 = MockDataProvider::subscription();
+        $sub3 = MockDataProvider::subscription();
 
-        $_resHandler = $this->responseHandler()->type(ListSubscriptionsResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::listSubscriptions([$sub1, $sub2, $sub3], 3);
     }
 
     /**
@@ -927,17 +753,14 @@ class SubscriptionsController extends BaseController
         CreateIncrementRequest $request,
         ?string $idempotencyKey = null
     ): GetIncrementResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/subscriptions/{subscription_id}/increments')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetIncrementResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $increment = new GetIncrementResponse();
+        $increment->setId(MockIdGenerator::generate('incr'));
+        $increment->setValue(10.0);
+        $increment->setIncrementType('percentage');
+        $increment->setStatus('active');
+        $increment->setCreatedAt(new \DateTime());
+        $increment->setDescription('Mock increment');
+        return $increment;
     }
 
     /**
@@ -958,21 +781,16 @@ class SubscriptionsController extends BaseController
         CreateUsageRequest $body,
         ?string $idempotencyKey = null
     ): GetUsageResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::POST,
-            '/subscriptions/{subscription_id}/items/{item_id}/usages'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('item_id', $itemId),
-                BodyParam::init($body),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetUsageResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $usage = new GetUsageResponse();
+        $usage->setId(MockIdGenerator::generate('usage'));
+        $usage->setQuantity(1);
+        $usage->setDescription('Mock usage');
+        $usage->setUsedAt(new \DateTime());
+        $usage->setCreatedAt(new \DateTime());
+        $usage->setStatus('active');
+        $usage->setCode('mock_usage_code');
+        $usage->setAmount(100);
+        return $usage;
     }
 
     /**
@@ -985,19 +803,14 @@ class SubscriptionsController extends BaseController
      */
     public function getDiscountById(string $subscriptionId, string $discountId): GetDiscountResponse
     {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::GET,
-            '/subscriptions/{subscription_id}/discounts/{discountId}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('discountId', $discountId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetDiscountResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $discount = new GetDiscountResponse();
+        $discount->setId($discountId);
+        $discount->setStatus('active');
+        $discount->setValue(10.0);
+        $discount->setDiscountType('percentage');
+        $discount->setCreatedAt(new \DateTime());
+        $discount->setDescription('Mock discount');
+        return $discount;
     }
 
     /**
@@ -1016,17 +829,9 @@ class SubscriptionsController extends BaseController
         UpdateMetadataRequest $request,
         ?string $idempotencyKey = null
     ): GetSubscriptionResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/Subscriptions/{subscription_id}/metadata')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $sub = MockDataProvider::subscription();
+        $sub->setId($subscriptionId);
+        return $sub;
     }
 
     /**
@@ -1040,17 +845,7 @@ class SubscriptionsController extends BaseController
      */
     public function getSubscriptionCycles(string $subscriptionId, string $page, string $size): ListCyclesResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/subscriptions/{subscription_id}/cycles')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size)
-            );
-
-        $_resHandler = $this->responseHandler()->type(ListCyclesResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::listCycles([MockDataProvider::period(1)], 1);
     }
 
     /**
@@ -1069,20 +864,10 @@ class SubscriptionsController extends BaseController
         string $subscriptionItemId,
         ?string $idempotencyKey = null
     ): GetSubscriptionItemResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::DELETE,
-            '/subscriptions/{subscription_id}/items/{subscription_item_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('subscription_item_id', $subscriptionItemId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $item = MockDataProvider::subscriptionItem();
+        $item->setId($subscriptionItemId);
+        $item->setStatus('deleted');
+        return $item;
     }
 
     /**
@@ -1096,17 +881,18 @@ class SubscriptionsController extends BaseController
      */
     public function getIncrements(string $subscriptionId, ?int $page = null, ?int $size = null): ListIncrementsResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/subscriptions/{subscription_id}/increments/')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size)
-            );
+        $increment = new GetIncrementResponse();
+        $increment->setId(MockIdGenerator::generate('incr'));
+        $increment->setValue(10.0);
+        $increment->setIncrementType('percentage');
+        $increment->setStatus('active');
+        $increment->setCreatedAt(new \DateTime());
+        $increment->setDescription('Mock increment');
 
-        $_resHandler = $this->responseHandler()->type(ListIncrementsResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $list = new ListIncrementsResponse();
+        $list->setData([$increment]);
+        $list->setPaging(MockDataProvider::paging(1));
+        return $list;
     }
 
     /**
@@ -1127,20 +913,8 @@ class SubscriptionsController extends BaseController
         UpdateSubscriptionItemRequest $body,
         ?string $idempotencyKey = null
     ): GetSubscriptionItemResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::PUT,
-            '/subscriptions/{subscription_id}/items/{item_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('item_id', $itemId),
-                BodyParam::init($body),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetSubscriptionItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $item = MockDataProvider::subscriptionItem();
+        $item->setId($itemId);
+        return $item;
     }
 }

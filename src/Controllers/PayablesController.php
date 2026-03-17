@@ -10,13 +10,11 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\QueryParam;
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
-use PagarmeApiSDKLib\Exceptions\ApiException;
 use PagarmeApiSDKLib\Models\GetPayableResponse;
 use PagarmeApiSDKLib\Models\ListPayablesResponse;
-use PagarmeApiSDKLib\Utils\DateTimeHelper;
+use PagarmeApiSDKLib\Mock\MockDataProvider;
+use PagarmeApiSDKLib\Mock\MockWebhookDispatcher;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
 
 class PayablesController extends BaseController
 {
@@ -41,8 +39,6 @@ class PayablesController extends BaseController
      * @param int|null $gatewayId
      *
      * @return ListPayablesResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getPayables(
         ?string $type = null,
@@ -64,54 +60,20 @@ class PayablesController extends BaseController
         ?int $size = null,
         ?int $gatewayId = null
     ): ListPayablesResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/payables')
-            ->auth('httpBasic')
-            ->parameters(
-                QueryParam::init('type', $type),
-                QueryParam::init('split_id', $splitId),
-                QueryParam::init('bulk_anticipation_id', $bulkAnticipationId),
-                QueryParam::init('installment', $installment),
-                QueryParam::init('status', $status),
-                QueryParam::init('recipient_id', $recipientId),
-                QueryParam::init('amount', $amount),
-                QueryParam::init('charge_id', $chargeId),
-                QueryParam::init('payment_date_until', $paymentDateUntil),
-                QueryParam::init('payment_date_since', $paymentDateSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('updated_until', $updatedUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('updated_since', $updatedSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_until', $createdUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_since', $createdSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('liquidation_arrangement_id', $liquidationArrangementId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('gateway_id', $gatewayId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(ListPayablesResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $payable1 = MockDataProvider::payable();
+        $payable2 = MockDataProvider::payable();
+        return MockDataProvider::listPayables([$payable1, $payable2], 2);
     }
 
     /**
      * @param int $id
      *
      * @return GetPayableResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getPayableById(int $id): GetPayableResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/payables/{id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('id', $id));
-
-        $_resHandler = $this->responseHandler()->type(GetPayableResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $payable = MockDataProvider::payable();
+        $payable->setId((string) $id);
+        return $payable;
     }
 }

@@ -10,12 +10,7 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\BodyParam;
-use Core\Request\Parameters\HeaderParam;
-use Core\Request\Parameters\QueryParam;
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
-use PagarmeApiSDKLib\Exceptions\ApiException;
+use DateTime;
 use PagarmeApiSDKLib\Models\CreateAnticipationRequest;
 use PagarmeApiSDKLib\Models\CreateKYCLinkResponse;
 use PagarmeApiSDKLib\Models\CreateRecipientRequest;
@@ -31,13 +26,16 @@ use PagarmeApiSDKLib\Models\ListAnticipationResponse;
 use PagarmeApiSDKLib\Models\ListRecipientResponse;
 use PagarmeApiSDKLib\Models\ListTransferResponse;
 use PagarmeApiSDKLib\Models\ListWithdrawals;
+use PagarmeApiSDKLib\Models\PagingResponse;
 use PagarmeApiSDKLib\Models\UpdateAutomaticAnticipationSettingsRequest;
 use PagarmeApiSDKLib\Models\UpdateMetadataRequest;
 use PagarmeApiSDKLib\Models\UpdateRecipientBankAccountRequest;
 use PagarmeApiSDKLib\Models\UpdateRecipientCodeRequest;
 use PagarmeApiSDKLib\Models\UpdateRecipientRequest;
 use PagarmeApiSDKLib\Models\UpdateTransferSettingsRequest;
-use PagarmeApiSDKLib\Utils\DateTimeHelper;
+use PagarmeApiSDKLib\Mock\MockDataProvider;
+use PagarmeApiSDKLib\Mock\MockWebhookDispatcher;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
 
 class RecipientsController extends BaseController
 {
@@ -49,25 +47,15 @@ class RecipientsController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetRecipientResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateRecipient(
         string $recipientId,
         UpdateRecipientRequest $request,
         ?string $idempotencyKey = null
     ): GetRecipientResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PUT, '/recipients/{recipient_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetRecipientResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $rec = MockDataProvider::recipient();
+        $rec->setId($recipientId);
+        return $rec;
     }
 
     /**
@@ -75,24 +63,17 @@ class RecipientsController extends BaseController
      * @param string $withdrawalId
      *
      * @return GetWithdrawResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getWithdrawById(string $recipientId, string $withdrawalId): GetWithdrawResponse
     {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::GET,
-            '/recipients/{recipient_id}/withdrawals/{withdrawal_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                TemplateParam::init('withdrawal_id', $withdrawalId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetWithdrawResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $withdraw = new GetWithdrawResponse();
+        $withdraw->setId($withdrawalId);
+        $withdraw->setGatewayId(MockIdGenerator::generate('gw'));
+        $withdraw->setAmount(50000);
+        $withdraw->setStatus('transferred');
+        $withdraw->setCreatedAt(new DateTime());
+        $withdraw->setUpdatedAt(new DateTime());
+        return $withdraw;
     }
 
     /**
@@ -101,18 +82,12 @@ class RecipientsController extends BaseController
      * @param string $recipientId Recipiend id
      *
      * @return GetRecipientResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getRecipient(string $recipientId): GetRecipientResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/recipients/{recipient_id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('recipient_id', $recipientId));
-
-        $_resHandler = $this->responseHandler()->type(GetRecipientResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $rec = MockDataProvider::recipient();
+        $rec->setId($recipientId);
+        return $rec;
     }
 
     /**
@@ -121,18 +96,10 @@ class RecipientsController extends BaseController
      * @param string $recipientId Recipient id
      *
      * @return GetBalanceResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getBalance(string $recipientId): GetBalanceResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/recipients/{recipient_id}/balance')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('recipient_id', $recipientId));
-
-        $_resHandler = $this->responseHandler()->type(GetBalanceResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::balance($recipientId);
     }
 
     /**
@@ -142,18 +109,12 @@ class RecipientsController extends BaseController
      * @param int|null $size Page size
      *
      * @return ListRecipientResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getRecipients(?int $page = null, ?int $size = null): ListRecipientResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/recipients')
-            ->auth('httpBasic')
-            ->parameters(QueryParam::init('page', $page), QueryParam::init('size', $size));
-
-        $_resHandler = $this->responseHandler()->type(ListRecipientResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $rec1 = MockDataProvider::recipient();
+        $rec2 = MockDataProvider::recipient();
+        return MockDataProvider::listRecipients([$rec1, $rec2], 2);
     }
 
     /**
@@ -164,28 +125,15 @@ class RecipientsController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetRecipientResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateRecipientDefaultBankAccount(
         string $recipientId,
         UpdateRecipientBankAccountRequest $request,
         ?string $idempotencyKey = null
     ): GetRecipientResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::PATCH,
-            '/recipients/{recipient_id}/default-bank-account'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetRecipientResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $rec = MockDataProvider::recipient();
+        $rec->setId($recipientId);
+        return $rec;
     }
 
     /**
@@ -199,8 +147,6 @@ class RecipientsController extends BaseController
      * @param \DateTime|null $createdUntil Filter for end range of transfer creation date
      *
      * @return ListTransferResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getTransfers(
         string $recipientId,
@@ -210,22 +156,17 @@ class RecipientsController extends BaseController
         ?\DateTime $createdSince = null,
         ?\DateTime $createdUntil = null
     ): ListTransferResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/recipients/{recipient_id}/transfers')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('status', $status),
-                QueryParam::init('created_since', $createdSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_until', $createdUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime'])
-            );
+        $transfer = new GetTransferResponse();
+        $transfer->setId(MockIdGenerator::generate('tr'));
+        $transfer->setAmount(50000);
+        $transfer->setStatus('transferred');
+        $transfer->setCreatedAt(new DateTime());
+        $transfer->setUpdatedAt(new DateTime());
 
-        $_resHandler = $this->responseHandler()->type(ListTransferResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $list = new ListTransferResponse();
+        $list->setData([$transfer]);
+        $list->setPaging(MockDataProvider::paging(1));
+        return $list;
     }
 
     /**
@@ -235,24 +176,16 @@ class RecipientsController extends BaseController
      * @param string $transferId Transfer id
      *
      * @return GetTransferResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getTransfer(string $recipientId, string $transferId): GetTransferResponse
     {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::GET,
-            '/recipients/{recipient_id}/transfers/{transfer_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                TemplateParam::init('transfer_id', $transferId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetTransferResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $transfer = new GetTransferResponse();
+        $transfer->setId($transferId);
+        $transfer->setAmount(50000);
+        $transfer->setStatus('transferred');
+        $transfer->setCreatedAt(new DateTime());
+        $transfer->setUpdatedAt(new DateTime());
+        return $transfer;
     }
 
     /**
@@ -260,18 +193,17 @@ class RecipientsController extends BaseController
      * @param CreateWithdrawRequest $request
      *
      * @return GetWithdrawResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createWithdraw(string $recipientId, CreateWithdrawRequest $request): GetWithdrawResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/recipients/{recipient_id}/withdrawals')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('recipient_id', $recipientId), BodyParam::init($request));
-
-        $_resHandler = $this->responseHandler()->type(GetWithdrawResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $withdraw = new GetWithdrawResponse();
+        $withdraw->setId(MockIdGenerator::generate('withdraw'));
+        $withdraw->setGatewayId(MockIdGenerator::generate('gw'));
+        $withdraw->setAmount($request->getAmount());
+        $withdraw->setStatus('pending');
+        $withdraw->setCreatedAt(new DateTime());
+        $withdraw->setUpdatedAt(new DateTime());
+        return $withdraw;
     }
 
     /**
@@ -281,24 +213,19 @@ class RecipientsController extends BaseController
      * @param string $anticipationId Anticipation id
      *
      * @return GetAnticipationResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getAnticipation(string $recipientId, string $anticipationId): GetAnticipationResponse
     {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::GET,
-            '/recipients/{recipient_id}/anticipations/{anticipation_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                TemplateParam::init('anticipation_id', $anticipationId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetAnticipationResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $anticipation = new GetAnticipationResponse();
+        $anticipation->setId($anticipationId);
+        $anticipation->setRequestedAmount(100000);
+        $anticipation->setApprovedAmount(100000);
+        $anticipation->setStatus('approved');
+        $anticipation->setTimeframe('start');
+        $anticipation->setCreatedAt(new DateTime());
+        $anticipation->setUpdatedAt(new DateTime());
+        $anticipation->setPaymentDate(new DateTime());
+        return $anticipation;
     }
 
     /**
@@ -307,25 +234,15 @@ class RecipientsController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetRecipientResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateRecipientTransferSettings(
         string $recipientId,
         UpdateTransferSettingsRequest $request,
         ?string $idempotencyKey = null
     ): GetRecipientResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/recipients/{recipient_id}/transfer-settings')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetRecipientResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $rec = MockDataProvider::recipient();
+        $rec->setId($recipientId);
+        return $rec;
     }
 
     /**
@@ -334,18 +251,11 @@ class RecipientsController extends BaseController
      * @param string $code Recipient code
      *
      * @return GetRecipientResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getRecipientByCode(string $code): GetRecipientResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/recipients/{code}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('code', $code));
-
-        $_resHandler = $this->responseHandler()->type(GetRecipientResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $rec = MockDataProvider::recipient();
+        return $rec;
     }
 
     /**
@@ -356,28 +266,15 @@ class RecipientsController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetRecipientResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateAutomaticAnticipationSettings(
         string $recipientId,
         UpdateAutomaticAnticipationSettingsRequest $request,
         ?string $idempotencyKey = null
     ): GetRecipientResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::PATCH,
-            '/recipients/{recipient_id}/automatic-anticipation-settings'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetRecipientResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $rec = MockDataProvider::recipient();
+        $rec->setId($recipientId);
+        return $rec;
     }
 
     /**
@@ -388,25 +285,19 @@ class RecipientsController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetTransferResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createTransfer(
         string $recipientId,
         CreateTransferRequest $request,
         ?string $idempotencyKey = null
     ): GetTransferResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/recipients/{recipient_id}/transfers')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetTransferResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $transfer = new GetTransferResponse();
+        $transfer->setId(MockIdGenerator::generate('tr'));
+        $transfer->setAmount($request->getAmount());
+        $transfer->setStatus('pending');
+        $transfer->setCreatedAt(new DateTime());
+        $transfer->setUpdatedAt(new DateTime());
+        return $transfer;
     }
 
     /**
@@ -416,34 +307,23 @@ class RecipientsController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetRecipientResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createRecipient(
         CreateRecipientRequest $request,
         ?string $idempotencyKey = null
     ): GetRecipientResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/recipients')
-            ->auth('httpBasic')
-            ->parameters(BodyParam::init($request), HeaderParam::init('idempotency-key', $idempotencyKey));
-
-        $_resHandler = $this->responseHandler()->type(GetRecipientResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $rec = MockDataProvider::recipient();
+        return $rec;
     }
 
     /**
      * @return GetRecipientResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getDefaultRecipient(): GetRecipientResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/recipients/default')->auth('httpBasic');
-
-        $_resHandler = $this->responseHandler()->type(GetRecipientResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $rec = MockDataProvider::recipient();
+        $rec->setName('Default Mock Recipient');
+        return $rec;
     }
 
     /**
@@ -454,25 +334,22 @@ class RecipientsController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetAnticipationResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createAnticipation(
         string $recipientId,
         CreateAnticipationRequest $request,
         ?string $idempotencyKey = null
     ): GetAnticipationResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/recipients/{recipient_id}/anticipations')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetAnticipationResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $anticipation = new GetAnticipationResponse();
+        $anticipation->setId(MockIdGenerator::generate('antcp'));
+        $anticipation->setRequestedAmount($request->getAmount());
+        $anticipation->setApprovedAmount($request->getAmount());
+        $anticipation->setStatus('pending');
+        $anticipation->setTimeframe($request->getTimeframe());
+        $anticipation->setCreatedAt(new DateTime());
+        $anticipation->setUpdatedAt(new DateTime());
+        $anticipation->setPaymentDate($request->getPaymentDate());
+        return $anticipation;
     }
 
     /**
@@ -483,26 +360,16 @@ class RecipientsController extends BaseController
      * @param \DateTime $paymentDate Anticipation payment date
      *
      * @return GetAnticipationLimitResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getAnticipationLimits(
         string $recipientId,
         string $timeframe,
         \DateTime $paymentDate
     ): GetAnticipationLimitResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/recipients/{recipient_id}/anticipation_limits')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                QueryParam::init('timeframe', $timeframe),
-                QueryParam::init('payment_date', $paymentDate)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime'])
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetAnticipationLimitResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $limit = new GetAnticipationLimitResponse();
+        $limit->setAmount(500000);
+        $limit->setAnticipationFee(350);
+        return $limit;
     }
 
     /**
@@ -513,25 +380,15 @@ class RecipientsController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetRecipientResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateRecipientMetadata(
         string $recipientId,
         UpdateMetadataRequest $request,
         ?string $idempotencyKey = null
     ): GetRecipientResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/recipients/{recipient_id}/metadata')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetRecipientResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $rec = MockDataProvider::recipient();
+        $rec->setId($recipientId);
+        return $rec;
     }
 
     /**
@@ -548,8 +405,6 @@ class RecipientsController extends BaseController
      * @param \DateTime|null $createdUntil Filter for end range for anticipation creation date
      *
      * @return ListAnticipationResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getAnticipations(
         string $recipientId,
@@ -562,27 +417,20 @@ class RecipientsController extends BaseController
         ?\DateTime $createdSince = null,
         ?\DateTime $createdUntil = null
     ): ListAnticipationResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/recipients/{recipient_id}/anticipations')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('status', $status),
-                QueryParam::init('timeframe', $timeframe),
-                QueryParam::init('payment_date_since', $paymentDateSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('payment_date_until', $paymentDateUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_since', $createdSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_until', $createdUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime'])
-            );
+        $anticipation = new GetAnticipationResponse();
+        $anticipation->setId(MockIdGenerator::generate('antcp'));
+        $anticipation->setRequestedAmount(100000);
+        $anticipation->setApprovedAmount(100000);
+        $anticipation->setStatus('approved');
+        $anticipation->setTimeframe('start');
+        $anticipation->setCreatedAt(new DateTime());
+        $anticipation->setUpdatedAt(new DateTime());
+        $anticipation->setPaymentDate(new DateTime());
 
-        $_resHandler = $this->responseHandler()->type(ListAnticipationResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $list = new ListAnticipationResponse();
+        $list->setData([$anticipation]);
+        $list->setPaging(MockDataProvider::paging(1));
+        return $list;
     }
 
     /**
@@ -596,8 +444,6 @@ class RecipientsController extends BaseController
      * @param \DateTime|null $createdUntil
      *
      * @return ListWithdrawals Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getWithdrawals(
         string $recipientId,
@@ -607,22 +453,18 @@ class RecipientsController extends BaseController
         ?\DateTime $createdSince = null,
         ?\DateTime $createdUntil = null
     ): ListWithdrawals {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/recipients/{recipient_id}/withdrawals')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('status', $status),
-                QueryParam::init('created_since', $createdSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_until', $createdUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime'])
-            );
+        $withdraw = new GetWithdrawResponse();
+        $withdraw->setId(MockIdGenerator::generate('withdraw'));
+        $withdraw->setGatewayId(MockIdGenerator::generate('gw'));
+        $withdraw->setAmount(50000);
+        $withdraw->setStatus('transferred');
+        $withdraw->setCreatedAt(new DateTime());
+        $withdraw->setUpdatedAt(new DateTime());
 
-        $_resHandler = $this->responseHandler()->type(ListWithdrawals::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $list = new ListWithdrawals();
+        $list->setData([$withdraw]);
+        $list->setPaging(MockDataProvider::paging(1));
+        return $list;
     }
 
     /**
@@ -631,18 +473,14 @@ class RecipientsController extends BaseController
      * @param string $recipientId Recipient id
      *
      * @return CreateKYCLinkResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createKYCLink(string $recipientId): CreateKYCLinkResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/recipients/{recipient_id}/kyc_link')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('recipient_id', $recipientId));
-
-        $_resHandler = $this->responseHandler()->type(CreateKYCLinkResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $kyc = new CreateKYCLinkResponse();
+        $kyc->setBase64('bW9jay1reWMtYmFzZTY0LWRhdGE=');
+        $kyc->setUrl('https://mock-kyc.pagarme.com/link/' . $recipientId);
+        $kyc->setExpirationDate((new DateTime('+24 hours'))->format('Y-m-d\TH:i:s\Z'));
+        return $kyc;
     }
 
     /**
@@ -653,24 +491,14 @@ class RecipientsController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetRecipientResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateRecipientCode(
         string $recipientId,
         UpdateRecipientCodeRequest $request,
         ?string $idempotencyKey = null
     ): GetRecipientResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/recipients/{recipient_id}/code')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('recipient_id', $recipientId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetRecipientResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $rec = MockDataProvider::recipient();
+        $rec->setId($recipientId);
+        return $rec;
     }
 }

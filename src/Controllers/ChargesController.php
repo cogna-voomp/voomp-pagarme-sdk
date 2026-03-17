@@ -10,11 +10,6 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\BodyParam;
-use Core\Request\Parameters\HeaderParam;
-use Core\Request\Parameters\QueryParam;
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
 use PagarmeApiSDKLib\Exceptions\ApiException;
 use PagarmeApiSDKLib\Models\CreateCancelChargeRequest;
 use PagarmeApiSDKLib\Models\CreateCaptureChargeRequest;
@@ -28,7 +23,9 @@ use PagarmeApiSDKLib\Models\UpdateChargeCardRequest;
 use PagarmeApiSDKLib\Models\UpdateChargeDueDateRequest;
 use PagarmeApiSDKLib\Models\UpdateChargePaymentMethodRequest;
 use PagarmeApiSDKLib\Models\UpdateMetadataRequest;
-use PagarmeApiSDKLib\Utils\DateTimeHelper;
+use PagarmeApiSDKLib\Mock\MockDataProvider;
+use PagarmeApiSDKLib\Mock\MockWebhookDispatcher;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
 
 class ChargesController extends BaseController
 {
@@ -48,17 +45,10 @@ class ChargesController extends BaseController
         UpdateMetadataRequest $request,
         ?string $idempotencyKey = null
     ): GetChargeResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/Charges/{charge_id}/metadata')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('charge_id', $chargeId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetChargeResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $charge = MockDataProvider::charge();
+        $charge->setId($chargeId);
+        $charge->setMetadata($request->getMetadata());
+        return $charge;
     }
 
     /**
@@ -77,17 +67,10 @@ class ChargesController extends BaseController
         ?CreateCaptureChargeRequest $request = null,
         ?string $idempotencyKey = null
     ): GetChargeResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/charges/{charge_id}/capture')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('charge_id', $chargeId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetChargeResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $amount = $request ? $request->getAmount() : 10000;
+        $charge = MockDataProvider::charge($amount, 'paid');
+        $charge->setId($chargeId);
+        return $charge;
     }
 
     /**
@@ -101,13 +84,9 @@ class ChargesController extends BaseController
      */
     public function getCharge(string $chargeId): GetChargeResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/charges/{charge_id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('charge_id', $chargeId));
-
-        $_resHandler = $this->responseHandler()->type(GetChargeResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $charge = MockDataProvider::charge();
+        $charge->setId($chargeId);
+        return $charge;
     }
 
     /**
@@ -124,17 +103,9 @@ class ChargesController extends BaseController
         ?CreateConfirmPaymentRequest $request = null,
         ?string $idempotencyKey = null
     ): GetChargeResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/charges/{charge_id}/confirm-payment')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('charge_id', $chargeId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetChargeResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $charge = MockDataProvider::charge(10000, 'paid');
+        $charge->setId($chargeId);
+        return $charge;
     }
 
     /**
@@ -151,17 +122,9 @@ class ChargesController extends BaseController
         ?int $page = null,
         ?int $size = null
     ): ListChargeTransactionsResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/charges/{charge_id}/transactions')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('charge_id', $chargeId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size)
-            );
-
-        $_resHandler = $this->responseHandler()->type(ListChargeTransactionsResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $tx1 = MockDataProvider::creditCardTransaction(10000);
+        $tx2 = MockDataProvider::creditCardTransaction(5000);
+        return MockDataProvider::listChargeTransactions([$tx1, $tx2], 2);
     }
 
     /**
@@ -180,17 +143,9 @@ class ChargesController extends BaseController
         UpdateChargeCardRequest $request,
         ?string $idempotencyKey = null
     ): GetChargeResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/charges/{charge_id}/card')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('charge_id', $chargeId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetChargeResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $charge = MockDataProvider::charge();
+        $charge->setId($chargeId);
+        return $charge;
     }
 
     /**
@@ -205,13 +160,30 @@ class ChargesController extends BaseController
      */
     public function createCharge(CreateChargeRequest $request, ?string $idempotencyKey = null): GetChargeResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/Charges')
-            ->auth('httpBasic')
-            ->parameters(BodyParam::init($request), HeaderParam::init('idempotency-key', $idempotencyKey));
+        $amount = $request->getAmount() ?? 10000;
+        $paymentMethod = $request->getPaymentMethod() ?? 'credit_card';
+        $customer = null;
+        $metadata = $request->getMetadata() ?? [];
+        $code = $request->getCode() ?? null;
 
-        $_resHandler = $this->responseHandler()->type(GetChargeResponse::class);
+        $charge = MockDataProvider::charge(
+            $amount,
+            'paid',
+            $paymentMethod,
+            $code,
+            $customer,
+            $metadata
+        );
 
-        return $this->execute($_reqBuilder, $_resHandler);
+        MockWebhookDispatcher::dispatchChargePaid([
+            'id' => $charge->getId(),
+            'code' => $charge->getCode(),
+            'amount' => $charge->getAmount(),
+            'status' => $charge->getStatus(),
+            'payment_method' => $charge->getPaymentMethod(),
+        ]);
+
+        return $charge;
     }
 
     /**
@@ -231,17 +203,10 @@ class ChargesController extends BaseController
         UpdateChargePaymentMethodRequest $request,
         ?string $idempotencyKey = null
     ): GetChargeResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/charges/{charge_id}/payment-method')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('charge_id', $chargeId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetChargeResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $paymentMethod = $request->getPaymentMethod() ?? 'credit_card';
+        $charge = MockDataProvider::charge(10000, null, $paymentMethod);
+        $charge->setId($chargeId);
+        return $charge;
     }
 
     /**
@@ -260,17 +225,9 @@ class ChargesController extends BaseController
         UpdateChargeDueDateRequest $request,
         ?string $idempotencyKey = null
     ): GetChargeResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/Charges/{charge_id}/due-date')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('charge_id', $chargeId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetChargeResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $charge = MockDataProvider::charge();
+        $charge->setId($chargeId);
+        return $charge;
     }
 
     /**
@@ -287,19 +244,9 @@ class ChargesController extends BaseController
         ?\DateTime $createdSince = null,
         ?\DateTime $createdUntil = null
     ): GetChargesSummaryResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/charges/summary')
-            ->auth('httpBasic')
-            ->parameters(
-                QueryParam::init('status', $status),
-                QueryParam::init('created_since', $createdSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_until', $createdUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime'])
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetChargesSummaryResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $summary = new GetChargesSummaryResponse();
+        $summary->setTotal(150);
+        return $summary;
     }
 
     /**
@@ -314,16 +261,9 @@ class ChargesController extends BaseController
      */
     public function retryCharge(string $chargeId, ?string $idempotencyKey = null): GetChargeResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/charges/{charge_id}/retry')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('charge_id', $chargeId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetChargeResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $charge = MockDataProvider::charge(10000, 'pending');
+        $charge->setId($chargeId);
+        return $charge;
     }
 
     /**
@@ -355,25 +295,9 @@ class ChargesController extends BaseController
         ?\DateTime $createdSince = null,
         ?\DateTime $createdUntil = null
     ): ListChargesResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/charges')
-            ->auth('httpBasic')
-            ->parameters(
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('code', $code),
-                QueryParam::init('status', $status),
-                QueryParam::init('payment_method', $paymentMethod),
-                QueryParam::init('customer_id', $customerId),
-                QueryParam::init('order_id', $orderId),
-                QueryParam::init('created_since', $createdSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_until', $createdUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime'])
-            );
-
-        $_resHandler = $this->responseHandler()->type(ListChargesResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $charge1 = MockDataProvider::charge(10000, $status ?? 'paid', $paymentMethod ?? 'credit_card');
+        $charge2 = MockDataProvider::charge(25000, $status ?? 'paid', $paymentMethod ?? 'credit_card');
+        return MockDataProvider::listCharges([$charge1, $charge2], 2);
     }
 
     /**
@@ -392,16 +316,8 @@ class ChargesController extends BaseController
         ?CreateCancelChargeRequest $request = null,
         ?string $idempotencyKey = null
     ): GetChargeResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::DELETE, '/charges/{charge_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('charge_id', $chargeId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetChargeResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $charge = MockDataProvider::charge(10000, 'canceled');
+        $charge->setId($chargeId);
+        return $charge;
     }
 }

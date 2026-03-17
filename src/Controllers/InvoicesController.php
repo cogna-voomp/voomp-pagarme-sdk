@@ -10,18 +10,14 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\BodyParam;
-use Core\Request\Parameters\HeaderParam;
-use Core\Request\Parameters\QueryParam;
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
-use PagarmeApiSDKLib\Exceptions\ApiException;
 use PagarmeApiSDKLib\Models\CreateInvoiceRequest;
 use PagarmeApiSDKLib\Models\GetInvoiceResponse;
 use PagarmeApiSDKLib\Models\ListInvoicesResponse;
 use PagarmeApiSDKLib\Models\UpdateInvoiceStatusRequest;
 use PagarmeApiSDKLib\Models\UpdateMetadataRequest;
-use PagarmeApiSDKLib\Utils\DateTimeHelper;
+use PagarmeApiSDKLib\Mock\MockDataProvider;
+use PagarmeApiSDKLib\Mock\MockWebhookDispatcher;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
 
 class InvoicesController extends BaseController
 {
@@ -41,8 +37,6 @@ class InvoicesController extends BaseController
      * @param string|null $customerDocument
      *
      * @return ListInvoicesResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getInvoices(
         ?int $page = null,
@@ -57,27 +51,9 @@ class InvoicesController extends BaseController
         ?\DateTime $dueUntil = null,
         ?string $customerDocument = null
     ): ListInvoicesResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/invoices')
-            ->auth('httpBasic')
-            ->parameters(
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('code', $code),
-                QueryParam::init('customer_id', $customerId),
-                QueryParam::init('subscription_id', $subscriptionId),
-                QueryParam::init('created_since', $createdSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_until', $createdUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('status', $status),
-                QueryParam::init('due_since', $dueSince)->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('due_until', $dueUntil)->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('customer_document', $customerDocument)
-            );
-
-        $_resHandler = $this->responseHandler()->type(ListInvoicesResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $invoice1 = MockDataProvider::invoice(10000, null, null, $subscriptionId);
+        $invoice2 = MockDataProvider::invoice(20000, null, null, $subscriptionId);
+        return MockDataProvider::listInvoices([$invoice1, $invoice2], 2);
     }
 
     /**
@@ -87,21 +63,12 @@ class InvoicesController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetInvoiceResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function cancelInvoice(string $invoiceId, ?string $idempotencyKey = null): GetInvoiceResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::DELETE, '/invoices/{invoice_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('invoice_id', $invoiceId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetInvoiceResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $invoice = MockDataProvider::invoice(10000, 'canceled');
+        $invoice->setId($invoiceId);
+        return $invoice;
     }
 
     /**
@@ -112,25 +79,16 @@ class InvoicesController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetInvoiceResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateInvoiceStatus(
         string $invoiceId,
         UpdateInvoiceStatusRequest $request,
         ?string $idempotencyKey = null
     ): GetInvoiceResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/invoices/{invoice_id}/status')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('invoice_id', $invoiceId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetInvoiceResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $invoice = MockDataProvider::invoice();
+        $invoice->setId($invoiceId);
+        $invoice->setStatus($request->getStatus());
+        return $invoice;
     }
 
     /**
@@ -141,44 +99,27 @@ class InvoicesController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetInvoiceResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateInvoiceMetadata(
         string $invoiceId,
         UpdateMetadataRequest $request,
         ?string $idempotencyKey = null
     ): GetInvoiceResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/invoices/{invoice_id}/metadata')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('invoice_id', $invoiceId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetInvoiceResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $invoice = MockDataProvider::invoice();
+        $invoice->setId($invoiceId);
+        $invoice->setMetadata($request->getMetadata() ?? []);
+        return $invoice;
     }
 
     /**
      * @param string $subscriptionId Subscription Id
      *
      * @return GetInvoiceResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getPartialInvoice(string $subscriptionId): GetInvoiceResponse
     {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::GET,
-            '/subscriptions/{subscription_id}/partial-invoice'
-        )->auth('httpBasic')->parameters(TemplateParam::init('subscription_id', $subscriptionId));
-
-        $_resHandler = $this->responseHandler()->type(GetInvoiceResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $invoice = MockDataProvider::invoice(10000, 'partial', null, $subscriptionId);
+        return $invoice;
     }
 
     /**
@@ -190,8 +131,6 @@ class InvoicesController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetInvoiceResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createInvoice(
         string $subscriptionId,
@@ -199,21 +138,17 @@ class InvoicesController extends BaseController
         ?CreateInvoiceRequest $request = null,
         ?string $idempotencyKey = null
     ): GetInvoiceResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::POST,
-            '/subscriptions/{subscription_id}/cycles/{cycle_id}/pay'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('subscription_id', $subscriptionId),
-                TemplateParam::init('cycle_id', $cycleId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
+        $invoice = MockDataProvider::invoice(10000, 'paid', null, $subscriptionId);
 
-        $_resHandler = $this->responseHandler()->type(GetInvoiceResponse::class);
+        MockWebhookDispatcher::dispatchInvoiceCreated([
+            'id' => $invoice->getId(),
+            'code' => $invoice->getCode(),
+            'amount' => $invoice->getAmount(),
+            'status' => $invoice->getStatus(),
+            'subscription_id' => $subscriptionId,
+        ]);
 
-        return $this->execute($_reqBuilder, $_resHandler);
+        return $invoice;
     }
 
     /**
@@ -222,17 +157,11 @@ class InvoicesController extends BaseController
      * @param string $invoiceId Invoice Id
      *
      * @return GetInvoiceResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getInvoice(string $invoiceId): GetInvoiceResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/invoices/{invoice_id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('invoice_id', $invoiceId));
-
-        $_resHandler = $this->responseHandler()->type(GetInvoiceResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $invoice = MockDataProvider::invoice();
+        $invoice->setId($invoiceId);
+        return $invoice;
     }
 }

@@ -10,12 +10,6 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\BodyParam;
-use Core\Request\Parameters\HeaderParam;
-use Core\Request\Parameters\QueryParam;
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
-use PagarmeApiSDKLib\Exceptions\ApiException;
 use PagarmeApiSDKLib\Models\CreatePlanItemRequest;
 use PagarmeApiSDKLib\Models\CreatePlanRequest;
 use PagarmeApiSDKLib\Models\GetPlanItemResponse;
@@ -24,7 +18,8 @@ use PagarmeApiSDKLib\Models\ListPlansResponse;
 use PagarmeApiSDKLib\Models\UpdateMetadataRequest;
 use PagarmeApiSDKLib\Models\UpdatePlanItemRequest;
 use PagarmeApiSDKLib\Models\UpdatePlanRequest;
-use PagarmeApiSDKLib\Utils\DateTimeHelper;
+use PagarmeApiSDKLib\Mock\MockDataProvider;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
 
 class PlansController extends BaseController
 {
@@ -34,18 +29,12 @@ class PlansController extends BaseController
      * @param string $planId Plan id
      *
      * @return GetPlanResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getPlan(string $planId): GetPlanResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/plans/{plan_id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('plan_id', $planId));
-
-        $_resHandler = $this->responseHandler()->type(GetPlanResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $plan = MockDataProvider::plan();
+        $plan->setId($planId);
+        return $plan;
     }
 
     /**
@@ -56,25 +45,16 @@ class PlansController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetPlanItemResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function deletePlanItem(
         string $planId,
         string $planItemId,
         ?string $idempotencyKey = null
     ): GetPlanItemResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::DELETE, '/plans/{plan_id}/items/{plan_item_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('plan_id', $planId),
-                TemplateParam::init('plan_item_id', $planItemId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetPlanItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $item = MockDataProvider::planItem();
+        $item->setId($planItemId);
+        $item->setStatus('deleted');
+        return $item;
     }
 
     /**
@@ -85,25 +65,15 @@ class PlansController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetPlanResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updatePlanMetadata(
         string $planId,
         UpdateMetadataRequest $request,
         ?string $idempotencyKey = null
     ): GetPlanResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/Plans/{plan_id}/metadata')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('plan_id', $planId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetPlanResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $plan = MockDataProvider::plan(null, null, null, null, $request->getMetadata());
+        $plan->setId($planId);
+        return $plan;
     }
 
     /**
@@ -113,18 +83,16 @@ class PlansController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetPlanResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createPlan(CreatePlanRequest $body, ?string $idempotencyKey = null): GetPlanResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/plans')
-            ->auth('httpBasic')
-            ->parameters(BodyParam::init($body), HeaderParam::init('idempotency-key', $idempotencyKey));
-
-        $_resHandler = $this->responseHandler()->type(GetPlanResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::plan(
+            $body->getName(),
+            $body->getInterval(),
+            $body->getIntervalCount(),
+            null,
+            $body->getMetadata()
+        );
     }
 
     /**
@@ -135,25 +103,15 @@ class PlansController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetPlanResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updatePlan(
         string $planId,
         UpdatePlanRequest $request,
         ?string $idempotencyKey = null
     ): GetPlanResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PUT, '/plans/{plan_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('plan_id', $planId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetPlanResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $plan = MockDataProvider::plan();
+        $plan->setId($planId);
+        return $plan;
     }
 
     /**
@@ -163,21 +121,13 @@ class PlansController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetPlanResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function deletePlan(string $planId, ?string $idempotencyKey = null): GetPlanResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::DELETE, '/plans/{plan_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('plan_id', $planId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetPlanResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $plan = MockDataProvider::plan();
+        $plan->setId($planId);
+        $plan->setStatus('deleted');
+        return $plan;
     }
 
     /**
@@ -192,8 +142,6 @@ class PlansController extends BaseController
      * @param \DateTime|null $createdUntil Filter for plan's creation date end range
      *
      * @return ListPlansResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getPlans(
         ?int $page = null,
@@ -204,23 +152,10 @@ class PlansController extends BaseController
         ?\DateTime $createdSince = null,
         ?\DateTime $createdUntil = null
     ): ListPlansResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/plans')
-            ->auth('httpBasic')
-            ->parameters(
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('name', $name),
-                QueryParam::init('status', $status),
-                QueryParam::init('billing_type', $billingType),
-                QueryParam::init('created_since', $createdSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_until', $createdUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime'])
-            );
-
-        $_resHandler = $this->responseHandler()->type(ListPlansResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::listPlans([
+            MockDataProvider::plan('Mock Plan 1'),
+            MockDataProvider::plan('Mock Plan 2'),
+        ], 2);
     }
 
     /**
@@ -232,8 +167,6 @@ class PlansController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetPlanItemResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updatePlanItem(
         string $planId,
@@ -241,18 +174,9 @@ class PlansController extends BaseController
         UpdatePlanItemRequest $body,
         ?string $idempotencyKey = null
     ): GetPlanItemResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PUT, '/plans/{plan_id}/items/{plan_item_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('plan_id', $planId),
-                TemplateParam::init('plan_item_id', $planItemId),
-                BodyParam::init($body),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetPlanItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $item = MockDataProvider::planItem();
+        $item->setId($planItemId);
+        return $item;
     }
 
     /**
@@ -263,25 +187,13 @@ class PlansController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetPlanItemResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createPlanItem(
         string $planId,
         CreatePlanItemRequest $request,
         ?string $idempotencyKey = null
     ): GetPlanItemResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/plans/{plan_id}/items')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('plan_id', $planId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetPlanItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::planItem();
     }
 
     /**
@@ -291,17 +203,11 @@ class PlansController extends BaseController
      * @param string $planItemId Plan item id
      *
      * @return GetPlanItemResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getPlanItem(string $planId, string $planItemId): GetPlanItemResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/plans/{plan_id}/items/{plan_item_id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('plan_id', $planId), TemplateParam::init('plan_item_id', $planItemId));
-
-        $_resHandler = $this->responseHandler()->type(GetPlanItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $item = MockDataProvider::planItem();
+        $item->setId($planItemId);
+        return $item;
     }
 }

@@ -10,12 +10,6 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\BodyParam;
-use Core\Request\Parameters\HeaderParam;
-use Core\Request\Parameters\QueryParam;
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
-use PagarmeApiSDKLib\Exceptions\ApiException;
 use PagarmeApiSDKLib\Models\CreateAccessTokenRequest;
 use PagarmeApiSDKLib\Models\CreateAddressRequest;
 use PagarmeApiSDKLib\Models\CreateCardRequest;
@@ -32,6 +26,8 @@ use PagarmeApiSDKLib\Models\UpdateAddressRequest;
 use PagarmeApiSDKLib\Models\UpdateCardRequest;
 use PagarmeApiSDKLib\Models\UpdateCustomerRequest;
 use PagarmeApiSDKLib\Models\UpdateMetadataRequest;
+use PagarmeApiSDKLib\Mock\MockDataProvider;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
 
 class CustomersController extends BaseController
 {
@@ -43,25 +39,13 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetAddressResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createAddress(
         string $customerId,
         CreateAddressRequest $request,
         ?string $idempotencyKey = null
     ): GetAddressResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/customers/{customer_id}/addresses')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetAddressResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::address($customerId);
     }
 
     /**
@@ -73,8 +57,6 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetCardResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateCard(
         string $customerId,
@@ -82,18 +64,9 @@ class CustomersController extends BaseController
         UpdateCardRequest $request,
         ?string $idempotencyKey = null
     ): GetCardResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PUT, '/customers/{customer_id}/cards/{card_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                TemplateParam::init('card_id', $cardId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetCardResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $card = MockDataProvider::card();
+        $card->setId($cardId);
+        return $card;
     }
 
     /**
@@ -104,28 +77,18 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetAccessTokenResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function deleteAccessToken(
         string $customerId,
         string $tokenId,
         ?string $idempotencyKey = null
     ): GetAccessTokenResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::DELETE,
-            '/customers/{customer_id}/access-tokens/{token_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                TemplateParam::init('token_id', $tokenId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetAccessTokenResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $token = new GetAccessTokenResponse();
+        $token->setId($tokenId);
+        $token->setCode('mock_token_code');
+        $token->setStatus('deleted');
+        $token->setCreatedAt(new \DateTime());
+        return $token;
     }
 
     /**
@@ -135,18 +98,16 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetCustomerResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createCustomer(CreateCustomerRequest $request, ?string $idempotencyKey = null): GetCustomerResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/customers')
-            ->auth('httpBasic')
-            ->parameters(BodyParam::init($request), HeaderParam::init('idempotency-key', $idempotencyKey));
-
-        $_resHandler = $this->responseHandler()->type(GetCustomerResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::customer(
+            $request->getName(),
+            $request->getEmail(),
+            $request->getDocument(),
+            $request->getCode(),
+            $request->getType()
+        );
     }
 
     /**
@@ -155,18 +116,19 @@ class CustomersController extends BaseController
      * @param string $customerId Customer Id
      *
      * @return ListAccessTokensResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function deleteAccessTokens(string $customerId): ListAccessTokensResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/customers/{customer_id}/access-tokens/')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('customer_id', $customerId));
+        $token = new GetAccessTokenResponse();
+        $token->setId(MockIdGenerator::generate('token'));
+        $token->setCode('mock_token_code');
+        $token->setStatus('deleted');
+        $token->setCreatedAt(new \DateTime());
 
-        $_resHandler = $this->responseHandler()->type(ListAccessTokensResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $list = new ListAccessTokensResponse();
+        $list->setData([$token]);
+        $list->setPaging(MockDataProvider::paging(1));
+        return $list;
     }
 
     /**
@@ -178,8 +140,6 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetAddressResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateAddress(
         string $customerId,
@@ -187,18 +147,9 @@ class CustomersController extends BaseController
         UpdateAddressRequest $request,
         ?string $idempotencyKey = null
     ): GetAddressResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PUT, '/customers/{customer_id}/addresses/{address_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                TemplateParam::init('address_id', $addressId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetAddressResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $addr = MockDataProvider::address($customerId);
+        $addr->setId($addressId);
+        return $addr;
     }
 
     /**
@@ -208,21 +159,12 @@ class CustomersController extends BaseController
      * @param string $addressId Address Id
      *
      * @return GetAddressResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getAddress(string $customerId, string $addressId): GetAddressResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/customers/{customer_id}/addresses/{address_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                TemplateParam::init('address_id', $addressId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetAddressResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $addr = MockDataProvider::address($customerId);
+        $addr->setId($addressId);
+        return $addr;
     }
 
     /**
@@ -233,28 +175,16 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetAddressResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function deleteAddress(
         string $customerId,
         string $addressId,
         ?string $idempotencyKey = null
     ): GetAddressResponse {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::DELETE,
-            '/customers/{customer_id}/addresses/{address_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                TemplateParam::init('address_id', $addressId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetAddressResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $addr = MockDataProvider::address($customerId);
+        $addr->setId($addressId);
+        $addr->setStatus('deleted');
+        return $addr;
     }
 
     /**
@@ -268,8 +198,6 @@ class CustomersController extends BaseController
      * @param string|null $code Customer's code
      *
      * @return ListCustomersResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getCustomers(
         ?string $name = null,
@@ -279,20 +207,10 @@ class CustomersController extends BaseController
         ?string $email = null,
         ?string $code = null
     ): ListCustomersResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/customers')
-            ->auth('httpBasic')
-            ->parameters(
-                QueryParam::init('name', $name),
-                QueryParam::init('document', $document),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('email', $email),
-                QueryParam::init('Code', $code)
-            );
-
-        $_resHandler = $this->responseHandler()->type(ListCustomersResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::listCustomers([
+            MockDataProvider::customer('Mock Customer 1'),
+            MockDataProvider::customer('Mock Customer 2'),
+        ], 2);
     }
 
     /**
@@ -303,22 +221,19 @@ class CustomersController extends BaseController
      * @param int|null $size Page size
      *
      * @return ListAccessTokensResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getAccessTokens(string $customerId, ?int $page = null, ?int $size = null): ListAccessTokensResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/customers/{customer_id}/access-tokens')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size)
-            );
+        $token = new GetAccessTokenResponse();
+        $token->setId(MockIdGenerator::generate('token'));
+        $token->setCode('mock_token_code');
+        $token->setStatus('active');
+        $token->setCreatedAt(new \DateTime());
 
-        $_resHandler = $this->responseHandler()->type(ListAccessTokensResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $list = new ListAccessTokensResponse();
+        $list->setData([$token]);
+        $list->setPaging(MockDataProvider::paging(1));
+        return $list;
     }
 
     /**
@@ -329,22 +244,13 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetCardResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function deleteCard(string $customerId, string $cardId, ?string $idempotencyKey = null): GetCardResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::DELETE, '/customers/{customer_id}/cards/{card_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                TemplateParam::init('card_id', $cardId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetCardResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $card = MockDataProvider::card();
+        $card->setId($cardId);
+        $card->setStatus('deleted');
+        return $card;
     }
 
     /**
@@ -354,18 +260,12 @@ class CustomersController extends BaseController
      * @param string $cardId Card id
      *
      * @return GetCardResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getCard(string $customerId, string $cardId): GetCardResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/customers/{customer_id}/cards/{card_id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('customer_id', $customerId), TemplateParam::init('card_id', $cardId));
-
-        $_resHandler = $this->responseHandler()->type(GetCardResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $card = MockDataProvider::card();
+        $card->setId($cardId);
+        return $card;
     }
 
     /**
@@ -376,25 +276,18 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetCardResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createCard(
         string $customerId,
         CreateCardRequest $request,
         ?string $idempotencyKey = null
     ): GetCardResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/customers/{customer_id}/cards')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
+        $holderName = method_exists($request, 'getHolderName') ? $request->getHolderName() : null;
+        $number = method_exists($request, 'getNumber') ? $request->getNumber() : null;
+        $expMonth = method_exists($request, 'getExpMonth') ? $request->getExpMonth() : null;
+        $expYear = method_exists($request, 'getExpYear') ? $request->getExpYear() : null;
 
-        $_resHandler = $this->responseHandler()->type(GetCardResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::card($holderName, $number, $expMonth, $expYear);
     }
 
     /**
@@ -404,24 +297,15 @@ class CustomersController extends BaseController
      * @param string $tokenId Token Id
      *
      * @return GetAccessTokenResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getAccessToken(string $customerId, string $tokenId): GetAccessTokenResponse
     {
-        $_reqBuilder = $this->requestBuilder(
-            RequestMethod::GET,
-            '/customers/{customer_id}/access-tokens/{token_id}'
-        )
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                TemplateParam::init('token_id', $tokenId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetAccessTokenResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $token = new GetAccessTokenResponse();
+        $token->setId($tokenId);
+        $token->setCode('mock_token_code');
+        $token->setStatus('active');
+        $token->setCreatedAt(new \DateTime());
+        return $token;
     }
 
     /**
@@ -432,22 +316,16 @@ class CustomersController extends BaseController
      * @param int|null $size Page size
      *
      * @return ListAddressesResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getAddresses(string $customerId, ?int $page = null, ?int $size = null): ListAddressesResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/customers/{customer_id}/addresses')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size)
-            );
-
-        $_resHandler = $this->responseHandler()->type(ListAddressesResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $list = new ListAddressesResponse();
+        $list->setData([
+            MockDataProvider::address($customerId),
+            MockDataProvider::address($customerId),
+        ]);
+        $list->setPaging(MockDataProvider::paging(2));
+        return $list;
     }
 
     /**
@@ -458,25 +336,15 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetCustomerResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateCustomer(
         string $customerId,
         UpdateCustomerRequest $request,
         ?string $idempotencyKey = null
     ): GetCustomerResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PUT, '/customers/{customer_id}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetCustomerResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $cus = MockDataProvider::customer();
+        $cus->setId($customerId);
+        return $cus;
     }
 
     /**
@@ -487,25 +355,18 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetAccessTokenResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createAccessToken(
         string $customerId,
         CreateAccessTokenRequest $request,
         ?string $idempotencyKey = null
     ): GetAccessTokenResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/customers/{customer_id}/access-tokens')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetAccessTokenResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $token = new GetAccessTokenResponse();
+        $token->setId(MockIdGenerator::generate('token'));
+        $token->setCode('mock_token_code');
+        $token->setStatus('active');
+        $token->setCreatedAt(new \DateTime());
+        return $token;
     }
 
     /**
@@ -516,22 +377,13 @@ class CustomersController extends BaseController
      * @param int|null $size Page size
      *
      * @return ListCardsResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getCards(string $customerId, ?int $page = null, ?int $size = null): ListCardsResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/customers/{customer_id}/cards')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size)
-            );
-
-        $_resHandler = $this->responseHandler()->type(ListCardsResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return MockDataProvider::listCards([
+            MockDataProvider::card(),
+            MockDataProvider::card(),
+        ], 2);
     }
 
     /**
@@ -542,22 +394,12 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetCardResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function renewCard(string $customerId, string $cardId, ?string $idempotencyKey = null): GetCardResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/customers/{customer_id}/cards/{card_id}/renew')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                TemplateParam::init('card_id', $cardId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetCardResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $card = MockDataProvider::card();
+        $card->setId($cardId);
+        return $card;
     }
 
     /**
@@ -568,25 +410,16 @@ class CustomersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetCustomerResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateCustomerMetadata(
         string $customerId,
         UpdateMetadataRequest $request,
         ?string $idempotencyKey = null
     ): GetCustomerResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/Customers/{customer_id}/metadata')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('customer_id', $customerId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetCustomerResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $cus = MockDataProvider::customer();
+        $cus->setId($customerId);
+        $cus->setMetadata($request->getMetadata());
+        return $cus;
     }
 
     /**
@@ -595,17 +428,11 @@ class CustomersController extends BaseController
      * @param string $customerId Customer Id
      *
      * @return GetCustomerResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getCustomer(string $customerId): GetCustomerResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/customers/{customer_id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('customer_id', $customerId));
-
-        $_resHandler = $this->responseHandler()->type(GetCustomerResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $cus = MockDataProvider::customer();
+        $cus->setId($customerId);
+        return $cus;
     }
 }

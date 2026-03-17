@@ -10,12 +10,6 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\BodyParam;
-use Core\Request\Parameters\HeaderParam;
-use Core\Request\Parameters\QueryParam;
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
-use PagarmeApiSDKLib\Exceptions\ApiException;
 use PagarmeApiSDKLib\Models\CreateOrderItemRequest;
 use PagarmeApiSDKLib\Models\CreateOrderRequest;
 use PagarmeApiSDKLib\Models\GetOrderItemResponse;
@@ -24,7 +18,9 @@ use PagarmeApiSDKLib\Models\ListOrderResponse;
 use PagarmeApiSDKLib\Models\UpdateMetadataRequest;
 use PagarmeApiSDKLib\Models\UpdateOrderItemRequest;
 use PagarmeApiSDKLib\Models\UpdateOrderStatusRequest;
-use PagarmeApiSDKLib\Utils\DateTimeHelper;
+use PagarmeApiSDKLib\Mock\MockDataProvider;
+use PagarmeApiSDKLib\Mock\MockWebhookDispatcher;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
 
 class OrdersController extends BaseController
 {
@@ -33,21 +29,13 @@ class OrdersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetOrderResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function deleteAllOrderItems(string $orderId, ?string $idempotencyKey = null): GetOrderResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::DELETE, '/orders/{orderId}/items')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('orderId', $orderId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetOrderResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $order = MockDataProvider::order();
+        $order->setId($orderId);
+        $order->setItems([]);
+        return $order;
     }
 
     /**
@@ -55,18 +43,12 @@ class OrdersController extends BaseController
      * @param string $itemId Item Id
      *
      * @return GetOrderItemResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getOrderItem(string $orderId, string $itemId): GetOrderItemResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/orders/{orderId}/items/{itemId}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('orderId', $orderId), TemplateParam::init('itemId', $itemId));
-
-        $_resHandler = $this->responseHandler()->type(GetOrderItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $item = MockDataProvider::orderItem();
+        $item->setId($itemId);
+        return $item;
     }
 
     /**
@@ -77,25 +59,16 @@ class OrdersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetOrderResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateOrderMetadata(
         string $orderId,
         UpdateMetadataRequest $request,
         ?string $idempotencyKey = null
     ): GetOrderResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/Orders/{order_id}/metadata')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('order_id', $orderId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetOrderResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $order = MockDataProvider::order();
+        $order->setId($orderId);
+        $order->setMetadata($request->getMetadata() ?? []);
+        return $order;
     }
 
     /**
@@ -104,25 +77,16 @@ class OrdersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetOrderItemResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function deleteOrderItem(
         string $orderId,
         string $itemId,
         ?string $idempotencyKey = null
     ): GetOrderItemResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::DELETE, '/orders/{orderId}/items/{itemId}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('orderId', $orderId),
-                TemplateParam::init('itemId', $itemId),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetOrderItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $item = MockDataProvider::orderItem();
+        $item->setId($itemId);
+        $item->setStatus('deleted');
+        return $item;
     }
 
     /**
@@ -131,18 +95,12 @@ class OrdersController extends BaseController
      * @param string $orderId Order id
      *
      * @return GetOrderResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getOrder(string $orderId): GetOrderResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/orders/{order_id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('order_id', $orderId));
-
-        $_resHandler = $this->responseHandler()->type(GetOrderResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $order = MockDataProvider::order();
+        $order->setId($orderId);
+        return $order;
     }
 
     /**
@@ -157,8 +115,6 @@ class OrdersController extends BaseController
      * @param string|null $customerId Filter for order's customer id
      *
      * @return ListOrderResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getOrders(
         ?int $page = null,
@@ -169,23 +125,9 @@ class OrdersController extends BaseController
         ?\DateTime $createdUntil = null,
         ?string $customerId = null
     ): ListOrderResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/orders')
-            ->auth('httpBasic')
-            ->parameters(
-                QueryParam::init('page', $page),
-                QueryParam::init('size', $size),
-                QueryParam::init('code', $code),
-                QueryParam::init('status', $status),
-                QueryParam::init('created_since', $createdSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_until', $createdUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('customer_id', $customerId)
-            );
-
-        $_resHandler = $this->responseHandler()->type(ListOrderResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $order1 = MockDataProvider::order();
+        $order2 = MockDataProvider::order();
+        return MockDataProvider::listOrders([$order1, $order2], 2);
     }
 
     /**
@@ -195,8 +137,6 @@ class OrdersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetOrderItemResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function updateOrderItem(
         string $orderId,
@@ -204,18 +144,9 @@ class OrdersController extends BaseController
         UpdateOrderItemRequest $request,
         ?string $idempotencyKey = null
     ): GetOrderItemResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PUT, '/orders/{orderId}/items/{itemId}')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('orderId', $orderId),
-                TemplateParam::init('itemId', $itemId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetOrderItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $item = MockDataProvider::orderItem();
+        $item->setId($itemId);
+        return $item;
     }
 
     /**
@@ -224,25 +155,17 @@ class OrdersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetOrderResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function closeOrder(
         string $id,
         UpdateOrderStatusRequest $request,
         ?string $idempotencyKey = null
     ): GetOrderResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::PATCH, '/orders/{id}/closed')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('id', $id),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetOrderResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $order = MockDataProvider::order();
+        $order->setId($id);
+        $order->setClosed(true);
+        $order->setStatus('closed');
+        return $order;
     }
 
     /**
@@ -252,18 +175,38 @@ class OrdersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetOrderResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createOrder(CreateOrderRequest $body, ?string $idempotencyKey = null): GetOrderResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/orders')
-            ->auth('httpBasic')
-            ->parameters(BodyParam::init($body), HeaderParam::init('idempotency-key', $idempotencyKey));
+        $customer = $body->getCustomer() ? MockDataProvider::customer(
+            $body->getCustomer()->getName(),
+            $body->getCustomer()->getEmail(),
+            $body->getCustomer()->getDocument(),
+            $body->getCustomer()->getCode(),
+            $body->getCustomer()->getType()
+        ) : null;
 
-        $_resHandler = $this->responseHandler()->type(GetOrderResponse::class);
+        $metadata = $body->getMetadata();
+        $code = $body->getCode();
 
-        return $this->execute($_reqBuilder, $_resHandler);
+        $order = MockDataProvider::order(
+            10000,
+            'paid',
+            $customer,
+            null,
+            null,
+            $metadata,
+            $code
+        );
+
+        MockWebhookDispatcher::dispatchOrderPaid([
+            'id' => $order->getId(),
+            'code' => $order->getCode(),
+            'amount' => $order->getAmount(),
+            'status' => $order->getStatus(),
+        ]);
+
+        return $order;
     }
 
     /**
@@ -272,24 +215,18 @@ class OrdersController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetOrderItemResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createOrderItem(
         string $orderId,
         CreateOrderItemRequest $request,
         ?string $idempotencyKey = null
     ): GetOrderItemResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/orders/{orderId}/items')
-            ->auth('httpBasic')
-            ->parameters(
-                TemplateParam::init('orderId', $orderId),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetOrderItemResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $item = MockDataProvider::orderItem(
+            $request->getDescription(),
+            $request->getAmount(),
+            $request->getQuantity(),
+            $request->getCode() ?? ''
+        );
+        return $item;
     }
 }

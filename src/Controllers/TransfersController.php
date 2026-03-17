@@ -10,13 +10,13 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\BodyParam;
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
-use PagarmeApiSDKLib\Exceptions\ApiException;
 use PagarmeApiSDKLib\Models\CreateTransfer;
 use PagarmeApiSDKLib\Models\GetTransfer;
+use PagarmeApiSDKLib\Models\GetTransferSourceResponse;
+use PagarmeApiSDKLib\Models\GetTransferTargetResponse;
 use PagarmeApiSDKLib\Models\ListTransfers;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
+use PagarmeApiSDKLib\Mock\MockDataProvider;
 
 class TransfersController extends BaseController
 {
@@ -24,51 +24,56 @@ class TransfersController extends BaseController
      * @param string $transferId
      *
      * @return GetTransfer Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getTransferById(string $transferId): GetTransfer
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/transfers/{transfer_id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('transfer_id', $transferId));
-
-        $_resHandler = $this->responseHandler()->type(GetTransfer::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return $this->buildMockTransfer($transferId);
     }
 
     /**
      * Gets all transfers
      *
      * @return ListTransfers Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getTransfers(): ListTransfers
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/transfers')->auth('httpBasic');
-
-        $_resHandler = $this->responseHandler()->type(ListTransfers::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $transfer = $this->buildMockTransfer(MockIdGenerator::generate('tr'));
+        $paging = MockDataProvider::paging(1);
+        return new ListTransfers([$transfer], $paging);
     }
 
     /**
      * @param CreateTransfer $request
      *
      * @return GetTransfer Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createTransfer(CreateTransfer $request): GetTransfer
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/transfers/recipients')
-            ->auth('httpBasic')
-            ->parameters(BodyParam::init($request));
+        return $this->buildMockTransfer(MockIdGenerator::generate('tr'));
+    }
 
-        $_resHandler = $this->responseHandler()->type(GetTransfer::class);
+    private function buildMockTransfer(string $id): GetTransfer
+    {
+        $now = new \DateTime();
 
-        return $this->execute($_reqBuilder, $_resHandler);
+        $source = new GetTransferSourceResponse();
+        $source->setSourceId(MockIdGenerator::generate('rp'));
+        $source->setType('recipient');
+
+        $target = new GetTransferTargetResponse();
+        $target->setTargetId(MockIdGenerator::generate('rp'));
+        $target->setType('recipient');
+
+        return new GetTransfer(
+            $id,
+            MockIdGenerator::gatewayId(),
+            10000,
+            'transferred',
+            $now,
+            $now,
+            'transfer',
+            $source,
+            $target
+        );
     }
 }

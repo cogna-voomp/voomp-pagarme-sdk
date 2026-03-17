@@ -10,10 +10,8 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
-use PagarmeApiSDKLib\Exceptions\ApiException;
 use PagarmeApiSDKLib\Models\GetTransactionResponse;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
 
 class TransactionsController extends BaseController
 {
@@ -21,17 +19,20 @@ class TransactionsController extends BaseController
      * @param string $transactionId
      *
      * @return GetTransactionResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getTransaction(string $transactionId): GetTransactionResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/transactions/{transaction_id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('transaction_id', $transactionId));
-
-        $_resHandler = $this->responseHandler()->type(GetTransactionResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $response = new GetTransactionResponse();
+        $response->setId($transactionId);
+        $response->setGatewayId(MockIdGenerator::gatewayId());
+        $response->setAmount(10000);
+        $response->setStatus('paid');
+        $response->setSuccess(true);
+        $response->setCreatedAt(new \DateTime());
+        $response->setUpdatedAt(new \DateTime());
+        $response->setAttemptCount(1);
+        $response->setMaxAttempts(3);
+        $response->setTransactionType('transaction');
+        return $response;
     }
 }

@@ -10,13 +10,9 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\BodyParam;
-use Core\Request\Parameters\HeaderParam;
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
-use PagarmeApiSDKLib\Exceptions\ApiException;
 use PagarmeApiSDKLib\Models\CreateTokenRequest;
 use PagarmeApiSDKLib\Models\GetTokenResponse;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
 
 class TokensController extends BaseController
 {
@@ -27,17 +23,15 @@ class TokensController extends BaseController
      * @param string $publicKey Public key
      *
      * @return GetTokenResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getToken(string $id, string $publicKey): GetTokenResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/tokens/{id}?appId={public_key}')
-            ->parameters(TemplateParam::init('id', $id), TemplateParam::init('public_key', $publicKey));
-
-        $_resHandler = $this->responseHandler()->type(GetTokenResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $response = new GetTokenResponse();
+        $response->setId($id);
+        $response->setType('card');
+        $response->setCreatedAt(new \DateTime());
+        $response->setExpiresAt((new \DateTime('+1 hour'))->format('c'));
+        return $response;
     }
 
     /**
@@ -46,23 +40,17 @@ class TokensController extends BaseController
      * @param string|null $idempotencyKey
      *
      * @return GetTokenResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function createToken(
         string $publicKey,
         CreateTokenRequest $request,
         ?string $idempotencyKey = null
     ): GetTokenResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::POST, '/tokens?appId={public_key}')
-            ->parameters(
-                TemplateParam::init('public_key', $publicKey),
-                BodyParam::init($request),
-                HeaderParam::init('idempotency-key', $idempotencyKey)
-            );
-
-        $_resHandler = $this->responseHandler()->type(GetTokenResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        $response = new GetTokenResponse();
+        $response->setId(MockIdGenerator::generate('tok'));
+        $response->setType('card');
+        $response->setCreatedAt(new \DateTime());
+        $response->setExpiresAt((new \DateTime('+1 hour'))->format('c'));
+        return $response;
     }
 }

@@ -10,13 +10,10 @@ declare(strict_types=1);
 
 namespace PagarmeApiSDKLib\Controllers;
 
-use Core\Request\Parameters\QueryParam;
-use Core\Request\Parameters\TemplateParam;
-use CoreInterfaces\Core\Request\RequestMethod;
-use PagarmeApiSDKLib\Exceptions\ApiException;
 use PagarmeApiSDKLib\Models\GetBalanceOperationResponse;
 use PagarmeApiSDKLib\Models\ListBalanceOperationResponse;
-use PagarmeApiSDKLib\Utils\DateTimeHelper;
+use PagarmeApiSDKLib\Mock\MockIdGenerator;
+use PagarmeApiSDKLib\Mock\MockDataProvider;
 
 class BalanceOperationsController extends BaseController
 {
@@ -24,18 +21,10 @@ class BalanceOperationsController extends BaseController
      * @param int $id
      *
      * @return GetBalanceOperationResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getBalanceOperationById(int $id): GetBalanceOperationResponse
     {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/balance/operations/{id}')
-            ->auth('httpBasic')
-            ->parameters(TemplateParam::init('id', $id));
-
-        $_resHandler = $this->responseHandler()->type(GetBalanceOperationResponse::class);
-
-        return $this->execute($_reqBuilder, $_resHandler);
+        return $this->buildMockBalanceOperation(MockIdGenerator::generate('bo'));
     }
 
     /**
@@ -45,8 +34,6 @@ class BalanceOperationsController extends BaseController
      * @param string|null $recipientId
      *
      * @return ListBalanceOperationResponse Response from the API call
-     *
-     * @throws ApiException Thrown if API call fails
      */
     public function getBalanceOperations(
         ?string $status = null,
@@ -54,19 +41,26 @@ class BalanceOperationsController extends BaseController
         ?\DateTime $createdUntil = null,
         ?string $recipientId = null
     ): ListBalanceOperationResponse {
-        $_reqBuilder = $this->requestBuilder(RequestMethod::GET, '/balance/operations')
-            ->auth('httpBasic')
-            ->parameters(
-                QueryParam::init('status', $status),
-                QueryParam::init('created_since', $createdSince)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('created_until', $createdUntil)
-                    ->serializeBy([DateTimeHelper::class, 'toRfc3339DateTime']),
-                QueryParam::init('recipient_id', $recipientId)
-            );
+        $operation = $this->buildMockBalanceOperation(MockIdGenerator::generate('bo'));
+        $paging = MockDataProvider::paging(1);
 
-        $_resHandler = $this->responseHandler()->type(ListBalanceOperationResponse::class);
+        $response = new ListBalanceOperationResponse();
+        $response->setData([$operation]);
+        $response->setPaging($paging);
+        return $response;
+    }
 
-        return $this->execute($_reqBuilder, $_resHandler);
+    private function buildMockBalanceOperation(string $id): GetBalanceOperationResponse
+    {
+        $response = new GetBalanceOperationResponse();
+        $response->setId($id);
+        $response->setStatus('available');
+        $response->setBalanceAmount('100000');
+        $response->setBalanceOldAmount('90000');
+        $response->setType('credit');
+        $response->setAmount(10000);
+        $response->setFee('0');
+        $response->setCreatedAt((new \DateTime())->format('c'));
+        return $response;
     }
 }
