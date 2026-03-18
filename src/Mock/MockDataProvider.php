@@ -437,7 +437,6 @@ class MockDataProvider
         $inv->setStatus($status ?? 'paid');
         $inv->setPaymentMethod($paymentMethod ?? 'credit_card');
         $inv->setCreatedAt($now);
-        $inv->setUpdatedAt($now);
         $inv->setDueAt($dueAt);
         $inv->setTotalDiscount(0);
         $inv->setTotalIncrement(0);
