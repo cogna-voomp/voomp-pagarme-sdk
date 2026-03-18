@@ -208,7 +208,6 @@ class MockWebhookDispatcher
         $now = (new \DateTime())->format('Y-m-d\TH:i:s');
         $customer = $subscription->getCustomer();
         $card = $subscription->getCard();
-        $plan = $subscription->getPlan();
         $cycle = $subscription->getCurrentCycle();
 
         $data = [
@@ -269,14 +268,6 @@ class MockWebhookDispatcher
                 'exp_year' => $card->getExpYear(),
                 'status' => $card->getStatus(),
                 'type' => $card->getType() ?? 'credit',
-            ];
-        }
-
-        if ($plan) {
-            $data['plan'] = [
-                'id' => $plan->getId(),
-                'name' => $plan->getName(),
-                'status' => $plan->getStatus(),
             ];
         }
 

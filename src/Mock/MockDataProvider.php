@@ -528,12 +528,6 @@ class MockDataProvider
         $cycle = self::period(1, 'billed');
         $sub->setCurrentCycle($cycle);
 
-        $plan = self::plan($statementDescriptor, $interval, $intervalCount);
-        if ($planId) {
-            $plan->setId($planId);
-        }
-        $sub->setPlan($plan);
-
         $sub->setItems($items ?? [
             self::subscriptionItem($statementDescriptor, $resolvedAmount, 1, $cycles)
         ]);
