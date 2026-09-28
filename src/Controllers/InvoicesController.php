@@ -51,8 +51,12 @@ class InvoicesController extends BaseController
         ?\DateTime $dueUntil = null,
         ?string $customerDocument = null
     ): ListInvoicesResponse {
-        $invoice1 = MockDataProvider::invoice(10000, null, null, $subscriptionId);
-        $invoice2 = MockDataProvider::invoice(20000, null, null, $subscriptionId);
+        $paymentMethod = MockDataProvider::subscriptionPaymentMethod($subscriptionId);
+        $status = $paymentMethod === 'boleto' ? 'pending' : 'paid';
+        $invoice1 = MockDataProvider::invoice(10000, $status, $paymentMethod, $subscriptionId);
+        $invoice2 = MockDataProvider::invoice(20000, $status, $paymentMethod, $subscriptionId);
+        MockDataProvider::rememberInvoice($invoice1);
+        MockDataProvider::rememberInvoice($invoice2);
         return MockDataProvider::listInvoices([$invoice1, $invoice2], 2);
     }
 
@@ -154,6 +158,11 @@ class InvoicesController extends BaseController
      */
     public function getInvoice(string $invoiceId): GetInvoiceResponse
     {
+        $rememberedInvoice = MockDataProvider::invoiceById($invoiceId);
+        if ($rememberedInvoice !== null) {
+            return $rememberedInvoice;
+        }
+
         $invoice = MockDataProvider::invoice();
         $invoice->setId($invoiceId);
         return $invoice;

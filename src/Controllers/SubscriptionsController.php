@@ -336,6 +336,11 @@ class SubscriptionsController extends BaseController
             $body->getBillingType()
         );
 
+        MockDataProvider::rememberSubscriptionPaymentMethod(
+            $sub->getId(),
+            $body->getPaymentMethod() ?? 'credit_card'
+        );
+
         MockWebhookDispatcher::dispatchSubscriptionCreated($sub);
 
         return $sub;

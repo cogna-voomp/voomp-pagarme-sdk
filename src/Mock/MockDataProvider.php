@@ -23,6 +23,7 @@ use PagarmeApiSDKLib\Models\GetPhoneResponse;
 use PagarmeApiSDKLib\Models\GetPhonesResponse;
 use PagarmeApiSDKLib\Models\GetPricingSchemeResponse;
 use PagarmeApiSDKLib\Models\GetCreditCardTransactionResponse;
+use PagarmeApiSDKLib\Models\GetBoletoTransactionResponse;
 use PagarmeApiSDKLib\Models\GetRecipientResponse;
 use PagarmeApiSDKLib\Models\GetBalanceResponse;
 use PagarmeApiSDKLib\Models\GetPayableResponse;
@@ -46,6 +47,29 @@ use PagarmeApiSDKLib\Models\PagingResponse;
 
 class MockDataProvider
 {
+    private static $subscriptionPaymentMethods = [];
+    private static $invoicesById = [];
+
+    public static function rememberSubscriptionPaymentMethod(string $id, string $method): void
+    {
+        self::$subscriptionPaymentMethods[$id] = $method;
+    }
+
+    public static function subscriptionPaymentMethod(?string $id): string
+    {
+        return self::$subscriptionPaymentMethods[$id ?? ''] ?? 'credit_card';
+    }
+
+    public static function rememberInvoice(GetInvoiceResponse $invoice): void
+    {
+        self::$invoicesById[$invoice->getId()] = $invoice;
+    }
+
+    public static function invoiceById(string $id): ?GetInvoiceResponse
+    {
+        return self::$invoicesById[$id] ?? null;
+    }
+
     // ========== BILLING ADDRESS ==========
 
     public static function billingAddress(): GetBillingAddressResponse
@@ -324,7 +348,9 @@ class MockDataProvider
         $charge->setCustomer($customer ?? self::customer());
         $charge->setMetadata($metadata ?? []);
         $charge->setLastTransaction(
-            self::creditCardTransaction($amount, $installments, $statementDescriptor, $card)
+            $paymentMethod === 'boleto'
+                ? self::boletoTransaction($amount, $charge->getId())
+                : self::creditCardTransaction($amount, $installments, $statementDescriptor, $card)
         );
 
         if ($chargeStatus === 'paid') {
@@ -333,6 +359,24 @@ class MockDataProvider
         }
 
         return $charge;
+    }
+
+    public static function boletoTransaction(int $amount, string $chargeId): GetBoletoTransactionResponse
+    {
+        $dueAt = (new DateTime())->modify('+2 days');
+        $transaction = new GetBoletoTransactionResponse();
+        $transaction->setId(MockIdGenerator::transactionId());
+        $transaction->setAmount($amount);
+        $transaction->setStatus('generated');
+        $transaction->setSuccess(true);
+        $transaction->setTransactionType('boleto');
+        $transaction->setCreatedAt(new DateTime());
+        $transaction->setUpdatedAt(new DateTime());
+        $transaction->setDueAt($dueAt);
+        $transaction->setUrl('https://mock.pagarme.com/boletos/' . $chargeId);
+        $transaction->setBarcode('12345678901234567890123456789012345678901234');
+        $transaction->setLine('12345678901234567890123456789012345678901234');
+        return $transaction;
     }
 
     // ========== ORDER ITEM ==========
