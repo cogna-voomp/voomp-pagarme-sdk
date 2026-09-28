@@ -630,7 +630,7 @@ class MockDataProvider
         $payable->setAnticipationFee(0);
         $payable->setFraudCoverageFee(0);
         $payable->setInstallment(1);
-        $payable->setGatewayId(MockIdGenerator::gatewayId());
+        $payable->setGatewayId((int) MockIdGenerator::gatewayId());
         $payable->setChargeId($chargeId ?? MockIdGenerator::chargeId());
         $payable->setCreatedAt($now);
         $payable->setPaymentDate($now);

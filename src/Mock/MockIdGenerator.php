@@ -93,9 +93,9 @@ class MockIdGenerator
         return self::generate('oi');
     }
 
-    public static function payableId(): string
+    public static function payableId(): int
     {
-        return self::generate('payable');
+        return random_int(100000000, 999999999);
     }
 
     public static function gatewayId(): string

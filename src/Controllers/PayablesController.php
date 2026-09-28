@@ -73,7 +73,7 @@ class PayablesController extends BaseController
     public function getPayableById(int $id): GetPayableResponse
     {
         $payable = MockDataProvider::payable();
-        $payable->setId((string) $id);
+        $payable->setId($id);
         return $payable;
     }
 }
