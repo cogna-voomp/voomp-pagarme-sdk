@@ -189,17 +189,36 @@ class OrdersController extends BaseController
         $metadata = $body->getMetadata();
         $code = $body->getCode();
 
+        // Respeita o meio de pagamento e o valor do pedido: Pix e boleto ficam pendentes
+        // (com QR code / linha digitável), cartão é aprovado na hora.
+        $payments = $body->getPayments() ?? [];
+        $paymentMethod = $payments ? $payments[0]->getPaymentMethod() : 'credit_card';
+        $amount = 0;
+        foreach ($payments as $payment) {
+            $amount += (int) ($payment->getAmount() ?? 0);
+        }
+        if ($amount <= 0) {
+            foreach ($body->getItems() ?? [] as $item) {
+                $amount += $item->getAmount() * $item->getQuantity();
+            }
+        }
+        $amount = $amount > 0 ? $amount : 10000;
+        $status = in_array($paymentMethod, ['pix', 'boleto'], true) ? 'pending' : 'paid';
+
         $order = MockDataProvider::order(
-            10000,
-            'paid',
+            $amount,
+            $status,
             $customer,
             null,
             null,
             $metadata,
-            $code
+            $code,
+            $paymentMethod
         );
 
-        MockWebhookDispatcher::dispatchOrderPaid($order);
+        if ($status === 'paid') {
+            MockWebhookDispatcher::dispatchOrderPaid($order);
+        }
 
         return $order;
     }

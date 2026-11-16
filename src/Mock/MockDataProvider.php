@@ -24,6 +24,7 @@ use PagarmeApiSDKLib\Models\GetPhonesResponse;
 use PagarmeApiSDKLib\Models\GetPricingSchemeResponse;
 use PagarmeApiSDKLib\Models\GetCreditCardTransactionResponse;
 use PagarmeApiSDKLib\Models\GetBoletoTransactionResponse;
+use PagarmeApiSDKLib\Models\GetPixTransactionResponse;
 use PagarmeApiSDKLib\Models\GetRecipientResponse;
 use PagarmeApiSDKLib\Models\GetBalanceResponse;
 use PagarmeApiSDKLib\Models\GetPayableResponse;
@@ -347,11 +348,15 @@ class MockDataProvider
         $charge->setUpdatedAt($now);
         $charge->setCustomer($customer ?? self::customer());
         $charge->setMetadata($metadata ?? []);
-        $charge->setLastTransaction(
-            $paymentMethod === 'boleto'
-                ? self::boletoTransaction($amount, $charge->getId())
-                : self::creditCardTransaction($amount, $installments, $statementDescriptor, $card)
-        );
+        if ($paymentMethod === 'boleto') {
+            $charge->setLastTransaction(self::boletoTransaction($amount, $charge->getId()));
+        } elseif ($paymentMethod === 'pix') {
+            $charge->setLastTransaction(self::pixTransaction($amount, $charge->getId()));
+        } else {
+            $charge->setLastTransaction(
+                self::creditCardTransaction($amount, $installments, $statementDescriptor, $card)
+            );
+        }
 
         if ($chargeStatus === 'paid') {
             $charge->setPaidAt($now);
@@ -376,6 +381,24 @@ class MockDataProvider
         $transaction->setUrl('https://mock.pagarme.com/boletos/' . $chargeId);
         $transaction->setBarcode('12345678901234567890123456789012345678901234');
         $transaction->setLine('12345678901234567890123456789012345678901234');
+        $transaction->setPdf('https://mock.pagarme.com/boletos/' . $chargeId . '/pdf');
+        return $transaction;
+    }
+
+    public static function pixTransaction(int $amount, string $chargeId): GetPixTransactionResponse
+    {
+        $transaction = new GetPixTransactionResponse();
+        $transaction->setId(MockIdGenerator::transactionId());
+        $transaction->setAmount($amount);
+        $transaction->setStatus('waiting_payment');
+        $transaction->setSuccess(true);
+        $transaction->setTransactionType('pix');
+        $transaction->setCreatedAt(new DateTime());
+        $transaction->setUpdatedAt(new DateTime());
+        $transaction->setExpiresAt((new DateTime())->modify('+1 day'));
+        // Copia e cola fictício: não é um BR Code pagável.
+        $transaction->setQrCode('00020101021226MOCKPIX' . $chargeId . '5204000053039865802BR5913MOCK PAGARME6009SAO PAULO6304ABCD');
+        $transaction->setQrCodeUrl('https://mock.pagarme.com/pix/' . $chargeId . '.png');
         return $transaction;
     }
 
@@ -409,7 +432,8 @@ class MockDataProvider
         ?array $items = null,
         ?array $charges = null,
         ?array $metadata = null,
-        ?string $code = null
+        ?string $code = null,
+        string $paymentMethod = 'credit_card'
     ): GetOrderResponse {
         $now = new DateTime();
         $cus = $customer ?? self::customer();
@@ -427,7 +451,7 @@ class MockDataProvider
         $order->setCreatedAt($now);
         $order->setUpdatedAt($now);
         $order->setClosedAt($now);
-        $order->setCharges($charges ?? [self::charge($amount, $orderStatus === 'paid' ? 'paid' : 'pending', 'credit_card', null, $cus, $metadata)]);
+        $order->setCharges($charges ?? [self::charge($amount, $orderStatus === 'paid' ? 'paid' : 'pending', $paymentMethod, null, $cus, $metadata)]);
         $order->setMetadata($metadata ?? []);
         return $order;
     }
